@@ -1,14 +1,15 @@
 ```
 :::text
 
-" session_auto.vim:       Automatically save the session to the root of the current project based on the .git location 
-"                         and create a link at current directory. If the project root could not be determined, 
-"                         save the session under the current directory.
-" Maintainer:             Tuo Jung <https://github.com/trailblazing>
-" Version:                0.0.1
-" Website:                https://github.com/trailblazing/session_auto
-" Dependency:             https://github.com/trailblazing/boot
-" License:                GPL v3 and later
+session_auto.vim:   Automatically save the session to the root of the current 
+                    project based on the .git location and create a link at 
+                    current directory. If the project root could not be 
+                    determined, save the session under the current directory.
+Maintainer:         Tuo Jung <https://github.com/trailblazing>
+Version:            0.0.1
+Website:            https://github.com/trailblazing/session_auto
+Dependency:         https://github.com/trailblazing/boot
+License:            GPL v3 and later
 
 
 ===============================================================================
@@ -27,10 +28,12 @@
 
 1. Key feature
 
-The goal is to minimize interaction and configuration. Basic functionality out of the box.
+The goal is to minimize interaction and configuration. Basic functionality out 
+of the box.
 
-Determine which project the current file belongs to based on the .git directory.
-The session configurations is then automatically generated in the project directory.
+Determine which project the current file belongs to based on the .git 
+directory. The session configurations is then automatically generated in the 
+project directory.
 
 2. Installation
 ===============================================================================
@@ -53,8 +56,9 @@ session_auto.vim into your ~/.vim/pack/*/start/ directory.
 =======================================
 The plugin already provides key maps for make a session. But is not necessary.
 
-    noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address, g:is_windows, g:log_verbose)<CR>
-    You could define a map like this:
+    noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address
+        \ , g:is_windows, g:log_verbose)<CR>
+    You could define a map like this in your .vimrc or init.vim:
     map <leader>m <Plug>SessionAuto
 
 3. Configurables
@@ -62,13 +66,20 @@ The plugin already provides key maps for make a session. But is not necessary.
 
 3.1 Variables
 =======================================
-These are current global variables and implements that needed by session_auto.
+These are current global variables and implements might needed by session_auto.
 
     if(has("win32") || has("win95") || has("win64") || has("win16")) 
         let g:is_windows  = 1
     else
         let g:is_windows  = 0
     endif
+
+Optional list for the view files that don't need to be saved,
+
+    let g:skipview_files = [
+                \ '[EXAMPLE PLUGIN BUFFER]'
+                \, '__Tagbar__'
+                \ ]
 
 3.2 Logs
 =======================================
