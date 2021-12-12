@@ -1,8 +1,9 @@
 ```
 :::text
 
-" session_auto.vim:       Automatically save the session to the root of the 
-" current project based on the .git location and create a link at current directory
+" session_auto.vim:       Automatically save the session to the root of the current project based on the .git location 
+"                         and create a link at current directory. If the project root could not be determined, 
+"                         save the session under the current directory.
 " Maintainer:             Tuo Jung <https://github.com/trailblazing>
 " Version:                0.0.1
 " Website:                https://github.com/trailblazing/session_auto
