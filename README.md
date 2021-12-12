@@ -42,7 +42,9 @@ session_auto.vim into your ~/.vim/pack/*/start/ directory.
 
     cd ~/.vim/pack/*/start/
     git clone --recursive https://github.com/trailblazing/session_auto.git
+
     Or use plugin manager like vim-packager
+
     packadd vim-packager
     call packager#setup(function('s:packager_init_ref'))
     function! s:packager_init_ref(packager) abort
@@ -54,11 +56,13 @@ session_auto.vim into your ~/.vim/pack/*/start/ directory.
 
 2.1 Session key maps
 =======================================
-The plugin already provides key maps for make a session. But is not necessary.
+The plugin already provides key maps for make a session. But it's not necessary.
 
     noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address
         \ , g:is_windows, g:log_verbose)<CR>
+
     You could define a map like this in your .vimrc or init.vim:
+
     map <leader>m <Plug>SessionAuto
 
 3. Configurables
@@ -86,6 +90,8 @@ Optional list for the view files that don't need to be saved,
 Users may check logs to get feedback from session_auto.
 
     tail -30f g:vimrc_dir/.vim/vim.log
+
+The g:vimrc_dir should be your nominal $MYVIMRC path
 
 4. Development
 ===============================================================================
