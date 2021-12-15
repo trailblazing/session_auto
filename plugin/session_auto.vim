@@ -36,7 +36,10 @@ endfunction
 function! s:generate_link(target_file, log_address, is_windows, log_verbose)
     let local_dir = resolve(expand(getcwd()))
     if local_dir != s:session_dir
-        call boot#chomped_system('ln -sf ' . s:session_dir . '/' . a:target_file . ' ' . local_dir  . '/' . a:target_file)
+        let local_session = local_dir . '/' . s:session_name
+        if ! filewritable(local_dir) || ! filewritable(local_session)
+            call boot#chomped_system('ln -sf ' . s:session_dir . '/' . a:target_file . ' ' . local_dir  . '/' . a:target_file)
+        endif
     endif
 endfunction
 
@@ -188,36 +191,37 @@ else
 endif
 
 function! s:make_view_check(log_address, is_windows, log_verbose)
+    let result = 1
     if has('quickfix') && &buftype =~ 'nofile'
         " Buffer is marked as not a file
-        return 0
+        let result = 0
     endif
     " https://github.com/airblade/vim-rooter/issues/122    
     if empty(glob(escape(expand('%:p'), '?*[]')))
         " File does not exist on disk
-        return 0
+        let result = 0
     endif
     if len($TEMP) && expand('%:p:h') == $TEMP
         " We're in a temp dir
-        return 0
+        let result = 0
     endif
     if len($TMP) && expand('%:p:h') == $TMP
         " Also in temp dir
-        return 0
+        let result = 0
     endif
     if index(g:skipview_files, expand('%')) >= 0
         " File is in skip list
-        return 0
+        let result = 0
     endif
 
     let s:session_dir = s:session(a:log_address, a:is_windows, a:log_verbose) . ""
     let s:session_file = s:session_dir . '/' . s:session_name
     let folder_writable = boot#chomped_system("if [ -w " . s:session_dir . " ] ; then echo '1' ; else echo '0' ; fi")
     if 0 == folder_writable || ! filewritable(s:session_dir) || ! filewritable(s:session_file)
-        return 0
+        let result = 0
     endif
 
-    return 1
+    return result
 endfunction
 
 augroup auto_view
