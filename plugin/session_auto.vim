@@ -50,7 +50,7 @@ function! s:view_make(log_address, is_windows, log_verbose)
     silent! exe 'mkview! ' . s:view_file
     call s:generate_link(s:view_name, a:log_address, a:is_windows, a:log_verbose)
     " silent! execute "!clear &" | redraw!
-    silent! execute redraw!
+    redraw!
 endfunction
 
 function! s:view_load(log_address, is_windows, log_verbose)
@@ -58,7 +58,7 @@ function! s:view_load(log_address, is_windows, log_verbose)
     silent! exe 'set viewdir =' . s:session_dir
     let s:view_file = s:session_dir . '/' . s:view_name
     silent! exe 'loadview ' . s:view_file
-    silent! execute redraw!
+    redraw!
 endfunction
 
 " https://vim.fandom.com/wiki/Go_away_and_come_back
@@ -75,7 +75,7 @@ function! s:make(log_address, is_windows, log_verbose)
     silent! exe "mksession! " . s:session_file
     call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
     "   call boot#chomped_system("!clear & | redraw!")
-    silent! execute redraw!
+    redraw!
     execute "redrawstatus!"
     call boot#log_silent(a:log_address, "session::make", s:session_file, a:log_verbose)
 endfunction
@@ -92,7 +92,7 @@ fu! s:save(log_address, is_windows, log_verbose)
     silent! exe "mksession! " . s:session_file
     call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
     "   call boot#chomped_system("!clear & | redraw!")
-    silent! execute redraw!
+    redraw!
     execute "redrawstatus!"
     call boot#log_silent(a:log_address, "session::save", s:session_file, a:log_verbose)
     call boot#log_silent(a:log_address, "\n", "", a:log_verbose) 
@@ -108,7 +108,7 @@ function! s:update(log_address, is_windows, log_verbose)
         call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
         echo "updating session"
         " call boot#chomped_system("!clear & | redraw!")
-        silent! execute redraw!
+        redraw!
         execute "redrawstatus!"
     endif
     call boot#log_silent(a:log_address, "session::update", s:session_file, a:log_verbose)
@@ -139,7 +139,7 @@ function! s:load(log_address, is_windows, log_verbose)
         " exe 'source ' s:session_file
         :call s:restore(a:log_address, a:is_windows, a:log_verbose)
         " silent! echo "session loaded."
-        silent! execute redraw!
+        redraw!
         call boot#log_silent(a:log_address, "session::load", s:session_file . " loaded", a:log_verbose)
     else
         " silent! echo "No session loaded."
