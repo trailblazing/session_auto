@@ -12,9 +12,10 @@ if exists("g:session_auto_loaded")
     finish
 endif
 
+let s:view_dir     = '.view'
 let s:session_name = '.session.vim'
 let s:view_name    = '.view.vim'
-
+let s:session_dir  = resolve(expand(getcwd()))
 
 function! s:session(log_address, is_windows, log_verbose)
     let l:project = boot#project(a:log_address, a:is_windows, a:log_verbose)
@@ -27,7 +28,7 @@ function! s:session(log_address, is_windows, log_verbose)
     if filewritable(l:dir) != 2
         " exe 'silent !mkdir -p ' l:dir
         silent! exe '!mkdir -p ' l:dir
-        redraw!
+        " redraw!
     endif
 
     return l:dir
@@ -36,28 +37,35 @@ endfunction
 function! s:generate_link(target_file, log_address, is_windows, log_verbose)
     let local_dir = resolve(expand(getcwd()))
     if local_dir != s:session_dir
-        let local_session = local_dir . '/' . s:session_name
-        if ! filewritable(local_dir) || ! filewritable(local_session)
+        let local_session_or_view = local_dir . '/' . a:target_file
+        if ! filewritable(local_dir) || ! filewritable(local_session_or_view)
             call boot#chomped_system('ln -sf ' . s:session_dir . '/' . a:target_file . ' ' . local_dir  . '/' . a:target_file)
         endif
     endif
 endfunction
 
 function! s:view_make(log_address, is_windows, log_verbose)
-    let s:session_dir = s:session(a:log_address, a:is_windows, a:log_verbose) . ""
-    silent! exe 'set viewdir =' . s:session_dir
-    let s:view_file = s:session_dir . '/' . s:view_name
-    silent! exe 'mkview! ' . s:view_file
-    call s:generate_link(s:view_name, a:log_address, a:is_windows, a:log_verbose)
+    " let local_dir = resolve(expand(getcwd()))    " let s:session_dir = s:session(a:log_address, a:is_windows, a:log_verbose) . ""
+    silent! exe 'set viewdir=' . s:view_dir
+    " https://gist.github.com/mitry/813151
+    " set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
+    " set viewoptions-=options
+    set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
+    " let s:view_file = local_dir . '/' . s:view_name
+    silent! mkview!    " silent! exe 'mkview! ' . s:view_name
+    " call s:generate_link(s:view_name, a:log_address, a:is_windows, a:log_verbose)
     " silent! execute "!clear &" | redraw!
-    redraw!
+    " redraw!
 endfunction
 
 function! s:view_load(log_address, is_windows, log_verbose)
-    let s:session_dir = resolve(expand(getcwd()))    " s:session(a:log_address, a:is_windows, a:log_verbose) . ""
-    silent! exe 'set viewdir =' . s:session_dir
-    let s:view_file = s:session_dir . '/' . s:view_name
-    silent! exe 'loadview ' . s:view_file
+    " let local_dir = resolve(expand(getcwd()))    " s:session(a:log_address, a:is_windows, a:log_verbose) . ""
+    silent! exe 'set viewdir=' . s:view_dir
+    " set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
+    " set viewoptions-=options
+    set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
+    " let s:view_file = local_dir . '/' . s:view_name
+    silent! loadview   " silent! exe 'loadview ' . s:view_name
     redraw!
 endfunction
 
@@ -68,15 +76,22 @@ function! s:make(log_address, is_windows, log_verbose)
     let s:session_dir = s:session(a:log_address, a:is_windows, a:log_verbose) . ""
     let s:session_file = s:session_dir . '/' . s:session_name
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
-    set sessionoptions-=options
+    " set sessionoptions-=options
     set sessionoptions-=tabpages
     set sessionoptions-=help
-    set sessionoptions-=buffers
+
+    " set sessionoptions-=buffers
+    " Buffer changes won't save until you have following settings in your .vimrc/init.vim
+    " " https://stackoverflow.com/questions/2902048/vim-save-a-list-of-open-files-and-later-open-all-files/2902082
+    " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
+
     silent! exe "mksession! " . s:session_file
     call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
-    "   call boot#chomped_system("!clear & | redraw!")
-    redraw!
+    " call boot#chomped_system("!clear & | redraw!")
+    call s:view_make(a:log_address, a:is_windows, a:log_verbose)
+    " redraw!
     execute "redrawstatus!"
+    echom "Session saved in " . s:session_file
     call boot#log_silent(a:log_address, "session::make", s:session_file, a:log_verbose)
 endfunction
 
@@ -85,14 +100,20 @@ fu! s:save(log_address, is_windows, log_verbose)
     let s:session_dir = s:session(a:log_address, a:is_windows, a:log_verbose) . ""
     let s:session_file = s:session_dir . '/'. s:session_name
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
-    set sessionoptions-=options
+    " set sessionoptions-=options
     set sessionoptions-=tabpages
     set sessionoptions-=help
-    set sessionoptions-=buffers
+
+    " set sessionoptions-=buffers
+    " Buffer changes won't save until you have following settings in your .vimrc/init.vim
+    " " https://stackoverflow.com/questions/2902048/vim-save-a-list-of-open-files-and-later-open-all-files/2902082
+    " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
+
     silent! exe "mksession! " . s:session_file
     call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
-    "   call boot#chomped_system("!clear & | redraw!")
-    redraw!
+    " call boot#chomped_system("!clear & | redraw!")
+    " call s:view_make(a:log_address, a:is_windows, a:log_verbose)
+    " redraw!
     execute "redrawstatus!"
     call boot#log_silent(a:log_address, "session::save", s:session_file, a:log_verbose)
     call boot#log_silent(a:log_address, "\n", "", a:log_verbose) 
@@ -108,7 +129,8 @@ function! s:update(log_address, is_windows, log_verbose)
         call s:generate_link(s:session_name, a:log_address, a:is_windows, a:log_verbose)
         echo "updating session"
         " call boot#chomped_system("!clear & | redraw!")
-        redraw!
+        " call s:view_make(a:log_address, a:is_windows, a:log_verbose)
+        " redraw!
         execute "redrawstatus!"
     endif
     call boot#log_silent(a:log_address, "session::update", s:session_file, a:log_verbose)
@@ -137,9 +159,10 @@ function! s:load(log_address, is_windows, log_verbose)
         " silent! echom "session to be loaded."
         silent! exe 'source ' . s:session_file
         " exe 'source ' s:session_file
-        :call s:restore(a:log_address, a:is_windows, a:log_verbose)
+        call s:restore(a:log_address, a:is_windows, a:log_verbose)
         " silent! echo "session loaded."
-        redraw!
+        " call s:view_load(a:log_address, a:is_windows, a:log_verbose)
+        " redraw!
         call boot#log_silent(a:log_address, "session::load", s:session_file . " loaded", a:log_verbose)
     else
         " silent! echo "No session loaded."
@@ -224,13 +247,14 @@ function! s:make_view_check(log_address, is_windows, log_verbose)
     return result
 endfunction
 
+" https://vim.fandom.com/wiki/Make_views_automatic
 augroup auto_view
     autocmd!
     " Autosave & Load Views.
     autocmd BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(g:log_address, g:is_windows, g:log_verbose) |
                 \ call s:view_make(g:log_address, g:is_windows, g:log_verbose) | endif
     autocmd BufWinEnter ?* if s:make_view_check(g:log_address, g:is_windows, g:log_verbose) |
-                \ silent call s:view_load(g:log_address, g:is_windows, g:log_verbose) | endif
+                \ silent! call s:view_load(g:log_address, g:is_windows, g:log_verbose) | endif
 augroup end
 
 

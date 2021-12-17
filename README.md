@@ -20,7 +20,8 @@ License:            GPL v3 and later
 2.1 Session key maps
 3. Configurables
 3.1 Variables
-3.2 Logs
+3.2 Settings
+3.3 Logs
 4. Development
 5. References
 
@@ -45,9 +46,8 @@ session_auto.vim into your ~/.vim/pack/*/start/ directory.
 
     Or use plugin manager like vim-packager
 
-    packadd vim-packager
-    call packager#setup(function('s:packager_init_ref'))
-    function! s:packager_init_ref(packager) abort
+    call s:packager_init(g:plugin_dir['vim'], g:package_manager['vim'])
+    function! s:packager_init(plugin_dir, package_manager) abort
         ...
         call a:packager.add('trailblazing/session_auto', { 'type' : 'start' })
         ...
@@ -85,7 +85,21 @@ Optional list for the view files that don't need to be saved,
                 \, '__Tagbar__'
                 \ ]
 
-3.2 Logs
+3.2 Settings
+=======================================
+In your .vimrc/init.vim:
+
+set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
+set sessionoptions-=options
+set sessionoptions-=tabpages
+set sessionoptions-=help
+set sessionoptions+=buffers
+
+set viewoptions=folds,cursor,unix,slash
+
+set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
+
+3.3 Logs
 =======================================
 Users may check logs to get feedback from session_auto.
 
