@@ -8,16 +8,22 @@
 " Dependency:         https://github.com/trailblazing/boot
 " License:            GPL v3 and later
 
-if exists("g:loaded_session_auto")
+if exists("g:session_auto_loaded")
     finish
+endif
+
+let g:session_auto_loaded = 1
+
+if ! exists("g:fixed_tips_width")
+    let g:fixed_tips_width = 40
 endif
 
 let s:session_name = '.session.vim'
 let s:session_dir  = resolve(expand(getcwd()))
 
-function! s:make_session_dir(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:make_session_dir(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:user = boot#chomped_system('whoami')
-    let l:project = boot#project(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+    let l:project = boot#project(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
     let l:dir =  ""
     if l:project != ""
         let l:dir = l:project . '/.session.' . l:user
@@ -37,18 +43,18 @@ function! s:make_session_dir(log_address, is_windows, fix_tips_width, log_verbos
 
 
     if filewritable(l:dir)
-        call boot#log_silent(a:log_address, "s:make_session_dir", l:dir, a:fix_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "s:make_session_dir", l:dir, a:fixed_tips_width, a:log_verbose)
     else
         if "" == l:dir
-            call boot#log_silent(a:log_address, "s:make_session_dir", l:dir . 'failed', a:fix_tips_width, a:log_verbose)
+            call boot#log_silent(a:log_address, "s:make_session_dir", l:dir . 'failed', a:fixed_tips_width, a:log_verbose)
         else
-            call boot#log_silent(a:log_address, "s:make_session_dir", l:dir . ' failed', a:fix_tips_width, a:log_verbose)
+            call boot#log_silent(a:log_address, "s:make_session_dir", l:dir . ' failed', a:fixed_tips_width, a:log_verbose)
         endif
     endif
     return l:dir
 endfunction
 
-function! s:generate_link(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:generate_link(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:local_dir = resolve(expand(getcwd()))
     let l:local_session_dir = l:local_dir . '/.session.' . boot#chomped_system('whoami')
     if l:local_session_dir != s:session_dir
@@ -58,9 +64,9 @@ function! s:generate_link(log_address, is_windows, fix_tips_width, log_verbose)
     endif
 endfunction
 
-function! s:view_make(log_address, is_windows, fix_tips_width, log_verbose)
-    " let local_dir = resolve(expand(getcwd()))    " let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+function! s:view_make(log_address, is_windows, fixed_tips_width, log_verbose)
+    " let local_dir = resolve(expand(getcwd()))    " let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         silent! exe 'set viewdir=' . s:session_dir
         " https://gist.github.com/mitry/813151
@@ -69,15 +75,15 @@ function! s:view_make(log_address, is_windows, fix_tips_width, log_verbose)
         set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
         " let s:view_file = local_dir . '/' . s:view_name
         silent! mkview!    " silent! exe 'mkview! ' . s:view_name
-        " call s:generate_link(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+        " call s:generate_link(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
         " silent! execute "!clear &" | redraw!
         " redraw!
     endif
 endfunction
 
-function! s:view_load(log_address, is_windows, fix_tips_width, log_verbose)
-    " let local_dir = resolve(expand(getcwd()))    " s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+function! s:view_load(log_address, is_windows, fixed_tips_width, log_verbose)
+    " let local_dir = resolve(expand(getcwd()))    " s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         silent! exe 'set viewdir=' . s:session_dir
         " set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
@@ -91,9 +97,9 @@ endfunction
 
 " https://vim.fandom.com/wiki/Go_away_and_come_back
 " creates a session
-function! s:make(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:make(log_address, is_windows, fixed_tips_width, log_verbose)
     " let s:session_dir = getcwd() . ""
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         let s:session_file = s:session_dir . '/' . s:session_name
         set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
@@ -107,19 +113,19 @@ function! s:make(log_address, is_windows, fix_tips_width, log_verbose)
         " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
 
         silent! exe "mksession! " . s:session_file
-        call s:generate_link(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+        call s:generate_link(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
         " call boot#chomped_system("!clear & | redraw!")
-        call s:view_make(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+        call s:view_make(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
         " redraw!
         execute "redrawstatus!"
         echon "Session saved in " . s:session_file
-        call boot#log_silent(a:log_address, "session::make", s:session_file, a:fix_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "session::make", s:session_file, a:fixed_tips_width, a:log_verbose)
     endif
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
-fu! s:save(log_address, is_windows, fix_tips_width, log_verbose)
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+fu! s:save(log_address, is_windows, fixed_tips_width, log_verbose)
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         let s:session_file = s:session_dir . '/'. s:session_name
         set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
@@ -133,32 +139,32 @@ fu! s:save(log_address, is_windows, fix_tips_width, log_verbose)
         " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
 
         silent! exe "mksession! " . s:session_file
-        call s:generate_link(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+        call s:generate_link(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
         " call boot#chomped_system("!clear & | redraw!")
-        " call s:view_make(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+        " call s:view_make(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
         " redraw!
         execute "redrawstatus!"
-        call boot#log_silent(a:log_address, "session::save", s:session_file, a:fix_tips_width, a:log_verbose)
-        call boot#log_silent(a:log_address, "\n", "", a:fix_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "session::save", s:session_file, a:fixed_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "\n", "", a:fixed_tips_width, a:log_verbose)
     endif
 endfunction
 
 " updates a session, BUT ONLY IF IT ALREADY EXISTS
-function! s:update(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:update(log_address, is_windows, fixed_tips_width, log_verbose)
     " let s:session_dir = getcwd() . ""
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         let s:session_file = s:session_dir . '/' . s:session_name
         if filereadable(s:session_file)
             silent! exe "mksession! " . s:session_file
-            call s:generate_link(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+            call s:generate_link(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
             echo "updating session"
             " call boot#chomped_system("!clear & | redraw!")
-            " call s:view_make(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+            " call s:view_make(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
             " redraw!
             execute "redrawstatus!"
         endif
-        call boot#log_silent(a:log_address, "session::update", s:session_file, a:fix_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "session::update", s:session_file, a:fixed_tips_width, a:log_verbose)
     endif
 endfunction
 
@@ -170,30 +176,30 @@ fu! s:restore(log_address, is_windows, log_verbose)
             endif
         endfor
     endif
-    call boot#log_silent(a:log_address, "session::restore", s:session_file, a:fix_tips_width, a:log_verbose)
+    call boot#log_silent(a:log_address, "session::restore", s:session_file, a:fixed_tips_width, a:log_verbose)
 endfunction
 
 " loads a session if it exists
-function! s:load(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:load(log_address, is_windows, fixed_tips_width, log_verbose)
     " if argc() == 0
     " if(1 == len(v:argv))
     " let s:session_dir = getcwd() . ""
-    let s:session_dir = resolve(expand(getcwd()))    " s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+    let s:session_dir = resolve(expand(getcwd()))    " s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         let s:session_file = s:session_dir . '/' . s:session_name
-        call boot#log_silent(a:log_address, "session::session_file", s:session_file . "", a:fix_tips_width, a:log_verbose)
+        call boot#log_silent(a:log_address, "session::session_file", s:session_file . "", a:fixed_tips_width, a:log_verbose)
         if filereadable(s:session_file)
             " silent! echom "session to be loaded."
             silent! exe 'source ' . s:session_file
             " exe 'source ' s:session_file
-            call s:restore(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+            call s:restore(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
             " silent! echo "session loaded."
-            " call s:view_load(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose)
+            " call s:view_load(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
             " redraw!
-            call boot#log_silent(a:log_address, "session::load", s:session_file . " loaded", a:fix_tips_width, a:log_verbose)
+            call boot#log_silent(a:log_address, "session::load", s:session_file . " loaded", a:fixed_tips_width, a:log_verbose)
         else
             " silent! echo "No session loaded."
-            call boot#log_silent(a:log_address, "session::load", s:session_file . " does not load", a:fix_tips_width, a:log_verbose)
+            call boot#log_silent(a:log_address, "session::load", s:session_file . " does not load", a:fixed_tips_width, a:log_verbose)
         endif
         " else
         "     let s:session_file = ""
@@ -207,25 +213,27 @@ if(1 == len(v:argv))
 
     augroup load_session
         au!
-        au VimEnter * nested :call s:load(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)
+        au VimEnter * nested :call s:load(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)
     augroup END
 else
     let s:session_file = ""
     let s:session_dir = ""
 endif
 
-noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)<CR>
-" map <leader>m :call <SID>make(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)<CR>
+if ! exists("g:session_auto_loaded")
+    noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)<CR>
+    " map <leader>m :call <SID>make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)<CR>
+endif
 
 augroup save_and_update_session
     au!
-    au VimLeavePre * :call s:update(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)
-    au VimLeavePre * :call s:save(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)
+    au VimLeavePre * :call s:update(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)
+    au VimLeavePre * :call s:save(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)
 augroup END
 
 
 " " ssop-=buffers
-" autocmd BufEnter,VimLeavePre * call s:save(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose)
+" autocmd BufEnter,VimLeavePre * call s:save(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)
 
 if ! exists('g:skipview_files')
     " https://vim.fandom.com/wiki/Make_views_automatic
@@ -241,7 +249,7 @@ else
     :call uniq(sort(g:skipview_files))
 endif
 
-function! s:make_view_check(log_address, is_windows, fix_tips_width, log_verbose)
+function! s:make_view_check(log_address, is_windows, fixed_tips_width, log_verbose)
     let result = 1
     if has('quickfix') && &buftype =~ 'nofile'
         " Buffer is marked as not a file
@@ -265,7 +273,7 @@ function! s:make_view_check(log_address, is_windows, fix_tips_width, log_verbose
         let result = 0
     endif
 
-    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fix_tips_width, a:log_verbose) . ""
+    let s:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose) . ""
     if "" != s:session_dir
         let s:session_file = s:session_dir . '/' . s:session_name
         let folder_writable = boot#chomped_system("if [ -w " . s:session_dir . " ] ; then echo '1' ; else echo '0' ; fi")
@@ -282,14 +290,13 @@ endfunction
 augroup auto_view
     autocmd!
     " Autosave & Load Views.
-    autocmd BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose) |
-                \ call s:view_make(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose) | endif
-    autocmd BufWinEnter ?* if s:make_view_check(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose) |
-                \ silent! call s:view_load(g:log_address, g:is_windows, g:fix_tips_width, g:log_verbose) | endif
+    autocmd BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose) |
+                \ call s:view_make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose) | endif
+    autocmd BufWinEnter ?* if s:make_view_check(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose) |
+                \ silent! call s:view_load(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose) | endif
 augroup end
 
 
-let g:loaded_session_auto = 1
 
 
 
