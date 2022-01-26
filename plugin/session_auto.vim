@@ -12,7 +12,6 @@ if exists("g:session_auto_loaded")
     finish
 endif
 
-let g:session_auto_loaded = 1
 
 if ! exists('g:log_address')
     let g:log_address   = $HOME . '/.vim.log'
@@ -47,43 +46,68 @@ let s:session_name = '.session.vim'
 
 function! s:make_session_dir(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
+
     let l:user = boot#chomped_system('whoami')
     let l:group = boot#chomped_system('id ' . l:user . ' -g -n')
-    let l:user_home = boot#chomped_system("awk -v FS=':' -v user=\"" . l:user . "\" '($1==user) {print $6}' \"/etc/passwd\"")
     let l:project = boot#project(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
+    let l:parent_dir_user =  boot#chomped_system('stat -c "%U" ' . l:project)
+    let l:parent_dir_group =  boot#chomped_system('stat -c "%G" ' . l:project)
+    let l:user_home = boot#chomped_system("awk -v FS=':' -v user=\"" . l:user . "\" '($1==user) {print $6}' \"/etc/passwd\"")
     let l:session_dir =  ""
     let l:current_dir = resolve(expand(getcwd()))
+
+    function! s:home_session_storage(user_home, current_dir)
+        if has('nvim')
+            let l:project = a:user_home . '/.cache/nvim'
+        else
+            let l:project = a:user_home . '/.cache/vim'
+        endif
+        let l:sub_dir = substitute(a:current_dir, '\/', '', '')
+        let l:session_dir = l:project . '/sessions/' . l:sub_dir
+        return l:session_dir
+    endfunction
+
     if filewritable(l:project) != 2 || l:project == ""
-        let l:project = l:current_dir
-        let l:session_dir = l:current_dir . '/sessions'
-        if filewritable(l:project) != 2
-            if has('nvim')
-                let l:project = l:user_home . '/.cache/nvim'
+        if filewritable(l:current_dir) != 2
+            let l:session_dir = s:home_session_storage(l:user_home, l:current_dir)
+        else
+            if l:user != l:parent_dir_user
+                let l:session_dir = s:home_session_storage(l:user_home, l:current_dir)
             else
-                let l:project = l:user_home . '/.cache/vim'
+                let l:project = l:current_dir
+                let l:session_dir = l:project . '/sessions'
             endif
-            let l:sub_dir = substitute(l:current_dir, '/', '%', 'g')
-            let l:session_dir = l:project . '/sessions/' . l:sub_dir
         endif
-    else
-        let l:session_dir = l:project . '/sessions'
-    endif
-    if filewritable(l:session_dir) != 2
         silent! exe '!mkdir -p ' l:session_dir
-    endif
-    if filewritable(l:project) == 2 && l:project != l:current_dir && filewritable(l:current_dir) == 2
-        if filewritable(l:current_dir) == 2
-            call boot#chomped_system('ln -sf ' . l:session_dir  . '/ ' . l:current_dir . '/sessions' )
+    else
+        if l:project != l:current_dir
+            if l:user != l:parent_dir_user
+                let l:session_dir = s:home_session_storage(l:user_home, l:current_dir)
+                silent! exe '!mkdir -p ' l:session_dir
+            else
+                if filewritable(l:current_dir) == 2
+                    call boot#chomped_system('ln -sf ' . l:session_dir  . ' ' . l:current_dir . '/sessions')
+                else
+                    let l:session_dir = l:project . '/sessions'
+                    silent! exe '!mkdir -p ' l:session_dir
+                endif
+            endif
+        else
+            if l:user != l:parent_dir_user
+                let l:session_dir = s:home_session_storage(l:user_home, l:current_dir)
+                silent! exe '!mkdir -p ' l:session_dir
+            else
+                let l:session_dir = l:current_dir . '/sessions'
+                silent! exe '!mkdir -p ' l:session_dir
+            endif
         endif
     endif
+
     let l:session_file = l:session_dir . '/' . s:session_name
     silent! exe '!touch ' l:session_file
 
-    let l:parent_dir_user =  boot#chomped_system('stat -c "%U" ' . l:project)
-    let l:parent_dir_group =  boot#chomped_system('stat -c "%G" ' . l:project)
-
     if l:user != l:parent_dir_user || l:group != l:parent_dir_group
-        call boot#chomped_system('chown -R --quiet ' . l:parent_dir_user . ':' . l:parent_dir_group . ' ' . l:session_dir)
+        call boot#chomped_system('\chown -R --quiet ' . l:parent_dir_user . ':' . l:parent_dir_group . ' ' . l:session_dir)
     endif
 
     if ! filewritable(l:session_dir)
@@ -92,7 +116,6 @@ function! s:make_session_dir(log_address, is_windows, fixed_tips_width, log_verb
     return { 'session_file' : l:session_file, 'session_dir' : l:session_dir, 'user' : l:user, 'group' : l:group, 'user_home' :
                 \ l:user_home, 'parent_dir_user' : l:parent_dir_user , 'parent_dir_group' : l:parent_dir_group}
 endfunction
-
 
 function! s:view_make(log_address, is_windows, fixed_tips_width, log_verbose)
     " let local_dir = resolve(expand(getcwd()))    " let l:session_dir = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
@@ -126,7 +149,6 @@ endfunction
 function! s:make(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
     let target_info = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
-    let l:session_dir = target_info['session_dir']
     let l:session_file = target_info['session_file']
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
     " set sessionoptions-=options
@@ -146,15 +168,16 @@ function! s:make(log_address, is_windows, fixed_tips_width, log_verbose)
     call s:view_make(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
     " redraw!
     execute "redrawstatus!"
-    " echon "Session saved in " . l:session_file
+    echohl WarningMsg
     echom "Session saved in " . l:session_file
+    echohl None
     call boot#log_silent(a:log_address, l:func_name, l:session_file, a:fixed_tips_width, a:log_verbose)
-    silent! execute '!(printf ' . '"\%-"' . a:fixed_tips_width . '"s: \%s\n"' . ' Session saved in "'
+    silent! execute '!(printf ' . '"\n\%-"' . a:fixed_tips_width . '"s: \%s\n"' . ' "Session saved in " "'
                 \ . l:session_file . '")' . ' >> ' . a:log_address . ' 2>&1 &'
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
-fu! s:save(log_address, is_windows, fixed_tips_width, log_verbose)
+function! s:save(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
     let target_info = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
     let l:session_file = target_info['session_file']
@@ -174,8 +197,12 @@ fu! s:save(log_address, is_windows, fixed_tips_width, log_verbose)
     " call s:view_make(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
     " redraw!
     execute "redrawstatus!"
+    echohl WarningMsg
+    echom "Session saved in " . l:session_file
+    echohl None
     call boot#log_silent(a:log_address, l:func_name, l:session_file, a:fixed_tips_width, a:log_verbose)
-    call boot#log_silent(a:log_address, "\n", "", a:fixed_tips_width, a:log_verbose)
+    silent! execute '!(printf ' . '"\n\%-"' . a:fixed_tips_width . '"s: \%s\n"' . ' "Session saved in" "'
+                \ . l:session_file . '")' . ' >> ' . a:log_address . ' 2>&1 &'
 endfunction
 
 " updates a session, BUT ONLY IF IT ALREADY EXISTS
@@ -196,7 +223,7 @@ function! s:update(log_address, is_windows, fixed_tips_width, log_verbose)
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
-fu! s:restore(log_address, is_windows, fixed_tips_width, log_verbose)
+function! s:restore(log_address, is_windows, fixed_tips_width, log_verbose)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
     if bufexists(1)
         for l in range(1, bufnr('$'))
@@ -215,7 +242,7 @@ function! s:load(log_address, is_windows, fixed_tips_width, log_verbose)
     " if(1 == len(v:argv))
     let target_info = s:make_session_dir(a:log_address, a:is_windows, a:fixed_tips_width, a:log_verbose)
     let l:session_file = target_info['session_file']
-    call boot#log_silent(a:log_address, l:func_name, l:session_file, a:fixed_tips_width, a:log_verbose)
+    " call boot#log_silent(a:log_address, l:func_name, l:session_file, a:fixed_tips_width, a:log_verbose)
     if filereadable(l:session_file)
         " silent! echom "session to be loaded."
         silent! exe 'source ' . l:session_file
@@ -246,8 +273,10 @@ if(1 == len(v:argv))
 endif
 
 if ! exists("g:session_auto_loaded")
-    noremap <unique> <Plug>SessionAuto :call <SID>make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)<CR>
+    nnoremap <unique><silent> <Plug>(SessionAuto) :call <SID>make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)<CR><CR>
     " map <leader>m :call <SID>make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)<CR>
+    command! -bar -nargs=0 SA :call s:make(g:log_address, g:is_windows, g:fixed_tips_width, g:log_verbose)
+    let g:session_auto_loaded = 1
 endif
 
 augroup save_and_update_session
