@@ -29,8 +29,10 @@ endif
 
 let s:environment = {}
 
-let s:_environment = boot#environment(s:environment, 'session_auto.vim', s:_session_auto_develop, s:_init_value)
-" let s:_environment = boot#environment(s:environment, boot#chomped_system('basename ' . resolve(expand('#'. bufnr(). ':p'))), s:_cscope_auto_develop, s:_init_value)
+if ! exists("s:_environment")
+    let s:_environment = boot#environment(s:environment, 'session_auto.vim', s:_session_auto_develop, s:_init_value)
+    " let s:_environment = boot#environment(s:environment, boot#chomped_system('basename ' . resolve(expand('#'. bufnr(). ':p'))), s:_cscope_auto_develop, s:_init_value)
+endif
 
 " if ! exists("g:_environment")
 "     let g:_environment  = deepcopy(s:_environment, 1)
@@ -291,9 +293,9 @@ function! s:update(_environment)
         call s:view_make(a:_environment)
         " redraw!
         execute "redrawstatus!"
+        call boot#log_silent(l:func_name . '::"l:local_link" was saved at', l:local_link, a:_environment)
     endif
     call boot#log_silent(l:func_name, l:session_file, a:_environment)
-    call boot#log_silent(l:func_name . '::"l:local_link" was saved at', l:local_link, a:_environment)
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
