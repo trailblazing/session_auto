@@ -153,7 +153,7 @@ function! session_auto#make(_file_dir, _environment)
     if link_exists
         call boot#chomped_system('rm -f "' . l:session_dir . '"')
     endif
-    silent! exe '!mkdir -p ' l:session_dir
+    silent! exe '!command \mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
 
     let l:session_file = l:session_dir . '/' . s:session_name
     silent! exe '!touch ' l:session_file
