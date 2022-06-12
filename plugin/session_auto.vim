@@ -31,7 +31,7 @@ let s:environment = {}
 
 if ! exists("s:_environment")
     let s:_environment = boot#environment(s:environment, 'session_auto.vim', s:_session_auto_develop, s:_init_value)
-    " let s:_environment = boot#environment(s:environment, boot#chomped_system('basename ' . resolve(expand('#'. bufnr(). ':p'))), s:_cscope_auto_develop, s:_init_value)
+    " let s:_environment = boot#environment(s:environment, boot#chomp(system('basename ' . resolve(expand('#'. bufnr(). ':p'))), s:_cscope_auto_develop, s:_init_value))
 endif
 
 " if ! exists("g:_environment")
@@ -62,9 +62,9 @@ endfunction
 
 function! s:home_session_cache(_project_dir)
     let result = {}
-    let l:session_user  = boot#chomped_system('whoami')
-    let l:session_user_home = boot#chomped_system("awk -v FS=':' -v user=\"" .
-        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\"")
+    let l:session_user  = boot#chomp(system('whoami'))
+    let l:session_user_home = boot#chomp(system("awk -v FS=':' -v user=\"" .
+        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""))
     if has('nvim')
         let l:session_prefix = l:session_user_home . '/.cache/nvim'
     else
@@ -107,14 +107,14 @@ function! s:local_link(_file_dir, _environment)
     if l:current_dir != l:project_dir
         let l:session_prefix = l:home_session_cache['session_prefix']
         let l:local_link_to_cached_session_dir = l:session_prefix . l:current_dir
-        let link_exists = boot#chomped_system('if [ -L "' . l:local_link_to_cached_session_dir . '" ] ;
-            \ then echo 1 ; else echo 0 ; fi')
+        let link_exists = boot#chomp(system('if [ -L "' . l:local_link_to_cached_session_dir . '" ] ;
+            \ then echo 1 ; else echo 0 ; fi'))
         if link_exists
-            call boot#chomped_system('rm -f "' . l:local_link_to_cached_session_dir . '"')
+            call boot#chomp(system('rm -f "' . l:local_link_to_cached_session_dir . '"'))
         elseif filewritable(l:local_link_to_cached_session_dir) == 2
-            call boot#chomped_system('rm -rf "' . l:local_link_to_cached_session_dir . '"')
+            call boot#chomp(system('rm -rf "' . l:local_link_to_cached_session_dir . '"'))
         endif
-        call boot#chomped_system('ln -sf ' . l:session_dir  . ' ' . l:local_link_to_cached_session_dir)
+        call boot#chomp(system('ln -sf ' . l:session_dir  . ' ' . l:local_link_to_cached_session_dir))
     endif
     return l:local_link_to_cached_session_dir
 endfunction
@@ -123,24 +123,24 @@ endfunction
 function! session_auto#make(_file_dir, _environment)
     let l:func_name = boot#function_name('#', expand('<sfile>'))
 
-    let l:session_user  = boot#chomped_system('whoami')
-    let l:session_group = boot#chomped_system('id ' . l:session_user . ' -g -n')
+    let l:session_user  = boot#chomp(system('whoami'))
+    let l:session_group = boot#chomp(system('id ' . l:session_user . ' -g -n'))
 
     let l:project_dir = boot#project(a:_file_dir, a:_environment)
-    let l:project_dir_user  = boot#chomped_system('stat -c "%U" ' . l:project_dir)
-    let l:project_dir_group = boot#chomped_system('stat -c "%G" ' . l:project_dir)
+    let l:project_dir_user  = boot#chomp(system('stat -c "%U" ' . l:project_dir))
+    let l:project_dir_group = boot#chomp(system('stat -c "%G" ' . l:project_dir))
     " https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
-    let l:session_user_belongs_to_project_group = boot#chomped_system("if id -nG " .
-        \ l:session_user . " | grep -qw " . l:project_dir_group . "; then echo '1' ; else echo '0' ; fi")
-    let l:session_user_home = boot#chomped_system("awk -v FS=':' -v user=\"" .
-        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\"")
+    let l:session_user_belongs_to_project_group = boot#chomp(system("if id -nG " .
+        \ l:session_user . " | grep -qw " . l:project_dir_group . "; then echo '1' ; else echo '0' ; fi"))
+    let l:session_user_home = boot#chomp(system("awk -v FS=':' -v user=\"" .
+        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""))
 
     let l:session_dir =  ""
 
     " let l:current_dir = resolve(expand(getcwd()))
     let l:current_dir = boot#standardize($PWD)
-    let l:current_dir_user  = boot#chomped_system('stat -c "%U" ' . l:current_dir)
-    let l:current_dir_group = boot#chomped_system('stat -c "%G" ' . l:current_dir)
+    let l:current_dir_user  = boot#chomp(system('stat -c "%U" ' . l:current_dir))
+    let l:current_dir_group = boot#chomp(system('stat -c "%G" ' . l:current_dir))
 
     if l:project_dir == ""
         let l:project_dir = l:current_dir
@@ -148,10 +148,10 @@ function! session_auto#make(_file_dir, _environment)
 
     let l:home_session_cache = s:home_session_cache(l:project_dir)
     let l:session_dir = l:home_session_cache['session_dir']
-    let link_exists = boot#chomped_system('if [ -L "' . l:session_dir . '" ] ;
-        \ then echo 1 ; else echo 0 ; fi')
+    let link_exists = boot#chomp(system('if [ -L "' . l:session_dir . '" ] ;
+        \ then echo 1 ; else echo 0 ; fi'))
     if link_exists
-        call boot#chomped_system('rm -f "' . l:session_dir . '"')
+        call boot#chomp(system('rm -f "' . l:session_dir . '"'))
     endif
     silent! exe '!command \mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
 
@@ -159,7 +159,7 @@ function! session_auto#make(_file_dir, _environment)
     silent! exe '!touch ' l:session_file
 
     if l:session_user != l:project_dir_user || l:session_group != l:project_dir_group
-        call boot#chomped_system('\chown -R --quiet ' . l:project_dir_user . ':' . l:project_dir_group . ' ' . l:session_dir)
+        call boot#chomp(system('\chown -R --quiet ' . l:project_dir_user . ':' . l:project_dir_group . ' ' . l:session_dir))
     endif
 
     if ! filewritable(l:session_dir)
@@ -231,7 +231,7 @@ function! s:make(_environment)
     let l:local_link = s:local_link(l:file_dir, a:_environment)
     " let target_info['session_file'] = l:session_file
     " call s:storage(target_info, a:_environment)
-    " call boot#chomped_system("!clear & | redraw!")
+    " call boot#chomp(system("!clear & | redraw!"))
     call s:view_make(a:_environment)
     " redraw!
     execute "redrawstatus!"
@@ -264,7 +264,7 @@ function! s:save(_environment)
     " breakadd here
     let l:local_link = s:local_link(l:file_dir, a:_environment)
     " call s:storage(target_info, a:_environment)
-    " call boot#chomped_system("!clear & | redraw!")
+    " call boot#chomp(system("!clear & | redraw!"))
     call s:view_make(a:_environment)
     " redraw!
     execute "redrawstatus!"
@@ -289,7 +289,7 @@ function! s:update(_environment)
         let l:local_link = s:local_link(l:file_dir, a:_environment)
         " call s:storage(target_info, a:_environment)
         echo "updating session"
-        " call boot#chomped_system("!clear & | redraw!")
+        " call boot#chomp(system("!clear & | redraw!"))
         call s:view_make(a:_environment)
         " redraw!
         execute "redrawstatus!"
@@ -418,7 +418,7 @@ function! s:make_view_check(_environment)
     let target_info = session_auto#make(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
     let l:session_dir = target_info['session_dir']
     let l:session_file = target_info['session_file']  " l:session_dir . '/' . s:session_name
-    let folder_writable = boot#chomped_system('if [ -w "' . l:session_dir . '" ] ; then echo 1 ; else echo 0 ; fi')
+    let folder_writable = boot#chomp(system('if [ -w "' . l:session_dir . '" ] ; then echo 1 ; else echo 0 ; fi'))
     if 0 == folder_writable || ! filewritable(l:session_dir) || ! filewritable(l:session_file)
         let result = 0
     endif
