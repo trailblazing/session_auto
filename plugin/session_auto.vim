@@ -30,13 +30,8 @@ endif
 let s:environment = {}
 
 if ! exists("s:_environment")
-    let s:_environment = boot#environment(s:environment, 'session_auto.vim', s:_session_auto_develop, s:_init_value)
-    " let s:_environment = boot#environment(s:environment, boot#chomp(system('basename ' . resolve(expand('#'. bufnr(). ':p'))), s:_cscope_auto_develop, s:_init_value))
+    let s:_environment = boot#environment(s:environment, '<sfile>', s:_session_auto_develop, s:_init_value)
 endif
-
-" if ! exists("g:_environment")
-"     let g:_environment  = deepcopy(s:_environment, 1)
-" endif
 
 if ! exists("g:session_auto_save_view")
     let s:_session_auto_save_view  = 0
@@ -62,9 +57,15 @@ endfunction
 
 function! s:home_session_cache(_project_dir)
     let result = {}
-    let l:session_user  = boot#chomp(system('whoami'))
-    let l:session_user_home = boot#chomp(system("awk -v FS=':' -v user=\"" .
-        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""))
+    if has('nvim')
+        let l:session_user  = boot#chomp(system(['whoami']))
+    else
+        let l:session_user  = boot#chomp(system('whoami'))
+    endif
+    " let l:session_user_home = boot#chomp(system(['sh', '-c', "awk -v FS=':' -v user=\"" .
+    "     \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""]))
+    let l:session_user_home = "$HOME"
+
     if has('nvim')
         let l:session_prefix = l:session_user_home . '/.cache/nvim'
     else
@@ -107,59 +108,116 @@ function! s:local_link(_file_dir, _environment)
     if l:current_dir != l:project_dir
         let l:session_prefix = l:home_session_cache['session_prefix']
         let l:local_link_to_cached_session_dir = l:session_prefix . l:current_dir
-        let link_exists = boot#chomp(system('if [ -L "' . l:local_link_to_cached_session_dir . '" ] ;
-            \ then echo 1 ; else echo 0 ; fi'))
-        if link_exists
-            call boot#chomp(system('rm -f "' . l:local_link_to_cached_session_dir . '"'))
-        elseif filewritable(l:local_link_to_cached_session_dir) == 2
-            call boot#chomp(system('rm -rf "' . l:local_link_to_cached_session_dir . '"'))
+        if filewritable(l:local_link_to_cached_session_dir) == 2
+            if has('nvim')
+                call boot#chomp(system(['rm', '-rf', l:local_link_to_cached_session_dir]))
+            else
+                call boot#chomp(system('rm -rf '. l:local_link_to_cached_session_dir))
+            endif
         endif
-        call boot#chomp(system('ln -sf ' . l:session_dir  . ' ' . l:local_link_to_cached_session_dir))
+        " let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "' . l:local_link_to_cached_session_dir . '" ] ;
+        "     \ then echo 1 ; else echo 0 ; fi']))
+        " if link_exists
+
+        if has('nvim')
+            let l:read_link = boot#chomp(system(['readlink', l:local_link_to_cached_session_dir]))
+        else
+            let l:read_link = boot#chomp(system('readlink '. l:local_link_to_cached_session_dir))
+        endif
+        if l:session_dir != l:read_link
+            if has('nvim')
+                call boot#chomp(system(['rm', '-rf', l:local_link_to_cached_session_dir]))
+                call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
+            else
+                call boot#chomp(system('rm -rf '. l:local_link_to_cached_session_dir))
+                call boot#chomp(system('ln -sf '. l:session_dir, l:local_link_to_cached_session_dir))
+            endif
+        endif
+        " else
+        "     call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
+        " endif
     endif
     return l:local_link_to_cached_session_dir
 endfunction
 
-" :echo session_auto#make(resolve(expand("#". bufnr(). ":p:h")), g:_environment)
 function! session_auto#make(_file_dir, _environment)
     let l:func_name = boot#function_name('#', expand('<sfile>'))
 
-    let l:session_user  = boot#chomp(system('whoami'))
-    let l:session_group = boot#chomp(system('id ' . l:session_user . ' -g -n'))
+    if has('nvim')
+        let l:session_user  = boot#chomp(system(['whoami']))
+        let l:session_group = boot#chomp(system(['id', '-gn', l:session_user]))
+    else
+        let l:session_user  = boot#chomp(system('whoami'))
+        let l:session_group = boot#chomp(system('id -gn ', l:session_user))
+    endif
 
     let l:project_dir = boot#project(a:_file_dir, a:_environment)
-    let l:project_dir_user  = boot#chomp(system('stat -c "%U" ' . l:project_dir))
-    let l:project_dir_group = boot#chomp(system('stat -c "%G" ' . l:project_dir))
-    " https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
-    let l:session_user_belongs_to_project_group = boot#chomp(system("if id -nG " .
-        \ l:session_user . " | grep -qw " . l:project_dir_group . "; then echo '1' ; else echo '0' ; fi"))
-    let l:session_user_home = boot#chomp(system("awk -v FS=':' -v user=\"" .
-        \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""))
+    if has('nvim')
+        let l:project_dir_user  = boot#chomp(system(['stat', '-c "%U"', l:project_dir]))
+        let l:project_dir_group = boot#chomp(system(['stat', '-c "%G"', l:project_dir]))
+        " https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
+        let l:user_in_groups    = boot#chomp(system(['id', '-nG', l:session_user]))
+    else
+        let l:project_dir_user  = boot#chomp(system('stat -c "%U" '. l:project_dir))
+        let l:project_dir_group = boot#chomp(system('stat -c "%G" '. l:project_dir))
+        " https://stackoverflow.com/questions/18431285/check-if-a-user-is-in-a-group
+        let l:user_in_groups    = boot#chomp(system('id -nG '. l:session_user))
+    endif
+    let l:grp_list = split(l:user_in_groups, " ")
+    let l:session_user_belongs_to_project_group = index(l:grp_list, l:project_dir_group) != -1
+    " let l:session_user_belongs_to_project_group = boot#chomp(system("if id -nG " .
+    "     \ l:session_user . " | grep -qw " . l:project_dir_group . "; then echo '1' ; else echo '0' ; fi"))
+
+    " let l:session_user_home = boot#chomp(system(['sh', '-c', "awk -v FS=':' -v user=\"" .
+    "     \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""]))
+    let l:session_user_home = "$HOME"
 
     let l:session_dir =  ""
 
     " let l:current_dir = resolve(expand(getcwd()))
     let l:current_dir = boot#standardize($PWD)
-    let l:current_dir_user  = boot#chomp(system('stat -c "%U" ' . l:current_dir))
-    let l:current_dir_group = boot#chomp(system('stat -c "%G" ' . l:current_dir))
-
+    if has('nvim')
+        let l:current_dir_user  = boot#chomp(system(['stat', '-c "%U"', l:current_dir]))
+        let l:current_dir_group = boot#chomp(system(['stat', '-c "%G"', l:current_dir]))
+    else
+        let l:current_dir_user  = boot#chomp(system('stat -c "%U" '. l:current_dir))
+        let l:current_dir_group = boot#chomp(system('stat -c "%G" '. l:current_dir))
+    endif
     if l:project_dir == ""
         let l:project_dir = l:current_dir
     endif
 
     let l:home_session_cache = s:home_session_cache(l:project_dir)
     let l:session_dir = l:home_session_cache['session_dir']
-    let link_exists = boot#chomp(system('if [ -L "' . l:session_dir . '" ] ;
-        \ then echo 1 ; else echo 0 ; fi'))
-    if link_exists
-        call boot#chomp(system('rm -f "' . l:session_dir . '"'))
+
+    if has('nvim')
+        let l:read_link = boot#chomp(system(['readlink', l:session_dir]))
+        " let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "' . l:session_dir . '" ] ;
+        "     \ then echo 1 ; else echo 0 ; fi']))
+    else
+        let l:read_link = boot#chomp(system('readlink '. l:session_dir))
     endif
-    silent! exe '!command \mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
+    let link_exists = l:read_link != l:session_dir
+    if link_exists
+        if filewritable(l:session_dir)
+            if has('nvim')
+                call boot#chomp(system(['rm', '-rf', l:session_dir]))
+            else
+                call boot#chomp(system('rm -rf '. l:session_dir))
+            endif
+        endif
+        silent! exe '!command mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
+    endif
 
     let l:session_file = l:session_dir . '/' . s:session_name
     silent! exe '!touch ' l:session_file
 
     if l:session_user != l:project_dir_user || l:session_group != l:project_dir_group
-        call boot#chomp(system('\chown -R --quiet ' . l:project_dir_user . ':' . l:project_dir_group . ' ' . l:session_dir))
+        if has('nvim')
+            call boot#chomp(system(['chown', '-R', '--quiet', '"' . l:project_dir_user . ':' . l:project_dir_group . '"', l:session_dir]))
+        else
+            call boot#chomp(system('chown -R --quiet '. '"' . l:project_dir_user . ':' . l:project_dir_group . '" '. l:session_dir))
+        endif
     endif
 
     if ! filewritable(l:session_dir)
@@ -350,12 +408,32 @@ function! s:load(_file_dir, _environment)
     " endif
 endfunction
 
+function! SaveSession()
+    let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
+    call s:save(s:_environment)
+    call boot#log_silent(l:func_name, "job started", a:_environment)
+endfunction
+
+
+function! LoadSession()
+    let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
+    call s:load(resolve(expand("#". bufnr(). ":p:h")), s:_environment)
+    call boot#log_silent(l:func_name, "job started", a:_environment)
+endfunction
+
+function! MakeSession()
+    let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
+    call s:make(s:_environment)
+    call boot#log_silent(l:func_name, "job started", a:_environment)
+endfunction
+
 " if(argc() == 0)
 if(1 == len(v:argv))
 
     augroup load_session
         au!
         au VimEnter * nested :call s:load(resolve(expand("#". bufnr(). ":p:h")), s:_environment)
+        " au VimEnter * nested :call function(g:_environment._job_start)("LoadSession")
     augroup END
 endif
 
@@ -363,13 +441,15 @@ if ! exists("g:session_auto_loaded")
     execute 'nnoremap <unique><silent> <Plug>(SessionAuto) :call <SID>make(g:_environment)<CR><CR>'
     " execute 'map <leader>m :call <SID>make(' . s:_environment . ')<CR>'
     command! -bar -nargs=0 SA :call s:make(s:_environment)
+    " command! -bar -nargs=0 SA :call function(g:_environment._job_start)("MakeSession")
     let g:session_auto_loaded = 1
 endif
 
 augroup save_and_update_session
     au!
-    au VimLeavePre * ++nested :call s:update(s:_environment)
-    au VimLeavePre * ++nested :call s:save(s:_environment)
+    " au VimLeavePre * ++nested :call s:update(s:_environment)
+    au VimLeavePre * :call s:save(s:_environment)
+    " au VimLeavePre * :call function(g:_environment._job_start)("SaveSession")
     " au BufEnter * ++nested :call s:update(s:_environment)
 augroup END
 
@@ -418,24 +498,25 @@ function! s:make_view_check(_environment)
     let target_info = session_auto#make(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
     let l:session_dir = target_info['session_dir']
     let l:session_file = target_info['session_file']  " l:session_dir . '/' . s:session_name
-    let folder_writable = boot#chomp(system('if [ -w "' . l:session_dir . '" ] ; then echo 1 ; else echo 0 ; fi'))
-    if 0 == folder_writable || ! filewritable(l:session_dir) || ! filewritable(l:session_file)
+    " let folder_writable = boot#chomp(system(['sh','-c', 'if [ -w "' . l:session_dir . '" ] ; then echo 1 ; else echo 0 ; fi']))
+    " if 0 == folder_writable || ! filewritable(l:session_dir) || ! filewritable(l:session_file)
+    if ! filewritable(l:session_dir) || ! filewritable(l:session_file)
         let result = 0
     endif
     return result
 endfunction
 
-if 1 == s:_session_auto_save_view
-    " https://vim.fandom.com/wiki/Make_views_automatic
-    augroup auto_view
-        autocmd!
-        " Autosave & Load Views.
-        autocmd BufWinLeave,BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(s:_environment) |
-            \ call s:view_make(s:_environment) | endif
-        autocmd BufWinEnter ?* if s:make_view_check(s:_environment) |
-            \ silent! call s:view_load(resolve(expand("#". bufnr(). ":p:h")), s:_environment) | endif
-    augroup end
-endif
+" if 1 == s:_session_auto_save_view
+"     " https://vim.fandom.com/wiki/Make_views_automatic
+"     augroup auto_view
+"         autocmd!
+"         " Autosave & Load Views.
+"         autocmd BufWinLeave,BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(s:_environment) |
+"             \ call s:view_make(s:_environment) | endif
+"         autocmd BufWinEnter ?* if s:make_view_check(s:_environment) |
+"             \ silent! call s:view_load(resolve(expand("#". bufnr(). ":p:h")), s:_environment) | endif
+"     augroup end
+" endif
 
 
 
