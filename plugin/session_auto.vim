@@ -127,10 +127,12 @@ function! s:local_link(_file_dir, _environment)
         if l:session_dir != l:read_link
             if has('nvim')
                 call boot#chomp(system(['rm', '-rf', l:local_link_to_cached_session_dir]))
-                call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
+                " local link leads to recursive calling of busybox (ash)
+                " call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
             else
                 call boot#chomp(system('rm -rf '. l:local_link_to_cached_session_dir))
-                call boot#chomp(system('ln -sf '. l:session_dir, l:local_link_to_cached_session_dir))
+                " local link leads to recursive calling of busybox (ash)
+                " call boot#chomp(system('ln -sf '. l:session_dir, l:local_link_to_cached_session_dir))
             endif
         endif
         " else
