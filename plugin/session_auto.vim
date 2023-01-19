@@ -46,7 +46,17 @@ else
     let s:_restore_each_buffer_view = g:restore_each_buffer_view
 endif
 
+" Rational
+" current_cache[/.fiction.vim]  --> project_cache[/.session.vim]
+"       ^          ^                   |^
+"       |          |                   v|
+" current_dir      |            --> project_dir         read stage
+"                  |                   |^
+"                  |                   v|
+"              current_dir          target_dir          write stage
+
 let s:session_name = '.session.vim'
+let s:fake_session = '.fiction.vim'
 
 let s:callback_update_setuped = 0
 
@@ -55,7 +65,8 @@ function! session_auto#setup(auto_update)
     let s:callback_update_setuped = 1
 endfunction
 
-function! s:home_session_cache(_project_dir)
+" Might input current dir or target dir
+function! s:to_session_cache(source_dir)
     let result = {}
     if has('nvim')
         let l:session_user  = boot#chomp(system(['whoami']))
@@ -64,82 +75,88 @@ function! s:home_session_cache(_project_dir)
     endif
     " let l:session_user_home = boot#chomp(system(['sh', '-c', "awk -v FS=':' -v user=\"" .
     "     \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""]))
-    let l:session_user_home = "$HOME"
+    let l:session_user_home = $HOME
 
     if has('nvim')
-        let l:session_prefix = l:session_user_home . '/.cache/nvim'
+        let l:cache_prefix = l:session_user_home . '/.cache/nvim'
     else
-        let l:session_prefix = l:session_user_home . '/.cache/vim'
+        let l:cache_prefix = l:session_user_home . '/.cache/vim'
     endif
-    let result['session_prefix'] = l:session_prefix
-    let l:sub_dir = boot#standardize(a:_project_dir)
-    let l:session_dir = l:session_prefix . l:sub_dir
+    let l:source_dir = boot#standardize(a:source_dir)
+    let l:session_dir = l:cache_prefix . l:source_dir
+    let result['session_prefix'] = l:cache_prefix
     let result['session_dir'] = l:session_dir
     return result
 endfunction
 
-function! session_auto#read(_file_dir = "", _environment = g:_environment)
+function! session_auto#read(_environment = g:_environment)
     let l:func_name = boot#function_name('#', expand('<sfile>'))
     let result = {}
     let l:current_dir = boot#standardize($PWD)
-    let result['current_dir'] = l:current_dir
-    let l:refer_dir = a:_file_dir
-    if a:_file_dir == ""
-        let l:refer_dir = l:current_dir
+    let l:current_cache = s:to_session_cache(l:current_dir)
+    let l:cache_link_dir = l:current_cache['session_dir']
+
+    if has('nvim')
+        let l:read_link = boot#chomp(system(['readlink', l:cache_link_dir . '/' . s:fake_session]))
+        let l:target_dir = boot#chomp(system(['dirname', l:read_link]))
+    else
+        let l:read_link = boot#chomp(system('readlink ' . l:cache_link_dir . '/' . s:fake_session))
+        let l:target_dir = boot#chomp(system('dirname ' . l:read_link))
     endif
-    let l:project_dir = boot#project(l:refer_dir, a:_environment)
-    let l:home_session_cache = s:home_session_cache(l:project_dir)
-    let l:session_dir = l:home_session_cache['session_dir']
-    let result['project_dir'] = l:project_dir
-    let result['session_dir'] = l:session_dir
-    let l:session_file = l:session_dir . '/' . s:session_name
-    let result['session_file'] = l:session_file
+
+    let result['session_file'] = l:read_link
+    let result['session_dir']  = l:target_dir
+
     return result
 endfunction
 
-function! s:local_link(_file_dir, _environment)
+function! s:local_link(_session_dir, _environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
-    let target_info = session_auto#read(a:_file_dir, a:_environment)
-    let l:project_dir = target_info['project_dir']
-    let l:current_dir = target_info['current_dir']
-    let l:session_dir = target_info['session_dir']
-    let l:home_session_cache = s:home_session_cache(l:project_dir)
-    let l:local_link_to_cached_session_dir = ""
-    if l:current_dir != l:project_dir
-        let l:session_prefix = l:home_session_cache['session_prefix']
-        let l:local_link_to_cached_session_dir = l:session_prefix . l:current_dir
-        if filewritable(l:local_link_to_cached_session_dir) == 2
-            if has('nvim')
-                call boot#chomp(system(['rm', '-rf', l:local_link_to_cached_session_dir]))
-            else
-                call boot#chomp(system('rm -rf '. l:local_link_to_cached_session_dir))
-            endif
-        endif
-        " let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "' . l:local_link_to_cached_session_dir . '" ] ;
-        "     \ then echo 1 ; else echo 0 ; fi']))
-        " if link_exists
+    let l:current_dir = boot#standardize($PWD)
+    let l:current_cache = s:to_session_cache(l:current_dir)
+    let l:cache_link_dir = ""
+    " echom "l:current_dir = " . l:current_dir
 
-        if has('nvim')
-            let l:read_link = boot#chomp(system(['readlink', l:local_link_to_cached_session_dir]))
-        else
-            let l:read_link = boot#chomp(system('readlink '. l:local_link_to_cached_session_dir))
-        endif
-        if l:session_dir != l:read_link
-            if has('nvim')
-                call boot#chomp(system(['rm', '-rf', l:local_link_to_cached_session_dir]))
-                " local link leads to recursive calling of busybox (ash)
-                " call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
-            else
-                call boot#chomp(system('rm -rf '. l:local_link_to_cached_session_dir))
-                " local link leads to recursive calling of busybox (ash)
-                " call boot#chomp(system('ln -sf '. l:session_dir, l:local_link_to_cached_session_dir))
-            endif
-        endif
-        " else
-        "     call boot#chomp(system(['ln', '-sf', l:session_dir, l:local_link_to_cached_session_dir]))
-        " endif
+    let l:cache_prefix = l:current_cache['session_prefix']
+    let l:cache_link_dir = l:cache_prefix . l:current_dir
+
+    " echom "l:cache_link_dir = " . l:cache_link_dir
+    " Not created yet
+    " if filewritable(l:cache_link_dir) == 2
+    if has('nvim')
+        " nvim -V9~/.vim.log
+        " E475: Invalid value for argument cmd: '\mkdir' is not executable
+        call boot#chomp(system(['mkdir', '-p', l:cache_link_dir]))
+    else
+        call boot#chomp(system('mkdir -p '. l:cache_link_dir))
     endif
-    return l:local_link_to_cached_session_dir
+    " endif
+
+    " let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "' . l:cache_link_dir . '" ] ;
+    "     \ then echo 1 ; else echo 0 ; fi']))
+    " if link_exists
+
+    if has('nvim')
+        let l:read_link = boot#chomp(system(['readlink', l:cache_link_dir . '/' . s:fake_session]))
+    else
+        let l:read_link = boot#chomp(system('readlink '. l:cache_link_dir . '/' . s:fake_session))
+    endif
+
+    if a:_session_dir . '/' . s:session_name != l:read_link
+        if has('nvim')
+            call boot#chomp(system(['rm', '-f', l:cache_link_dir . '/' . s:fake_session]))
+            " local link leads to recursive calling of busybox (ash)
+            call boot#chomp(system(['ln', '-sf', a:_session_dir . '/' . s:session_name,
+                \ l:cache_link_dir . '/' . s:fake_session]))
+        else
+            call boot#chomp(system('rm -f '. l:cache_link_dir . '/' . s:fake_session))
+            " local link leads to recursive calling of busybox (ash)
+            call boot#chomp(system('ln -sf '. a:_session_dir . '/' . s:session_name . " " .
+                \ l:cache_link_dir . '/' . s:fake_session))
+        endif
+    endif
+
+    return l:cache_link_dir . '/' . s:fake_session
 endfunction
 
 function! session_auto#make(_file_dir, _environment)
@@ -172,7 +189,7 @@ function! session_auto#make(_file_dir, _environment)
 
     " let l:session_user_home = boot#chomp(system(['sh', '-c', "awk -v FS=':' -v user=\"" .
     "     \ l:session_user . "\" '($1==user) {print $6}' \"/etc/passwd\""]))
-    let l:session_user_home = "$HOME"
+    let l:session_user_home = $HOME
 
     let l:session_dir =  ""
 
@@ -189,26 +206,39 @@ function! session_auto#make(_file_dir, _environment)
         let l:project_dir = l:current_dir
     endif
 
-    let l:home_session_cache = s:home_session_cache(l:project_dir)
-    let l:session_dir = l:home_session_cache['session_dir']
+    let l:project_cache = s:to_session_cache(l:project_dir)
+    let l:session_dir = l:project_cache['session_dir']
 
+    " Link to directory is a legacy design
     if has('nvim')
         let l:read_link = boot#chomp(system(['readlink', l:session_dir]))
         " let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "' . l:session_dir . '" ] ;
         "     \ then echo 1 ; else echo 0 ; fi']))
     else
-        let l:read_link = boot#chomp(system('readlink '. l:session_dir))
+        let l:read_link = boot#chomp(system('readlink ' . l:session_dir))
     endif
-    let link_exists = l:read_link != l:session_dir
+    let link_exists = l:read_link != l:session_dir && "" != l:read_link
     if link_exists
         if filewritable(l:session_dir)
             if has('nvim')
                 call boot#chomp(system(['rm', '-rf', l:session_dir]))
+                call boot#chomp(system(['mkdir', '-p', l:session_dir]))
             else
                 call boot#chomp(system('rm -rf '. l:session_dir))
+                call boot#chomp(system('mkdir -p '. l:session_dir))
             endif
         endif
-        silent! exe '!command mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
+    else
+        if has('nvim')
+            let dir_exists = boot#chomp(system(['sh', '-c', 'if [ -d "' . l:session_dir . '" ] ;
+                \ then echo 1 ; else echo 0 ; fi']))
+        else
+            let dir_exists = boot#chomp(system("sh -c 'if [ -d \"" . l:session_dir . "\" ] ;
+                \ then echo 1 ; else echo 0 ; fi'"))
+        endif
+        if ! dir_exists
+            silent! exe '!command mkdir -p ' l:session_dir . ' > /dev/null 2>&1'
+        endif
     endif
 
     let l:session_file = l:session_dir . '/' . s:session_name
@@ -241,24 +271,28 @@ function! session_auto#make(_file_dir, _environment)
 
 endfunction
 
-function! s:view_make(_environment)
+function! s:view_make(_session_dir, _environment)
     " let local_dir = resolve(expand(getcwd()))    " let l:session_dir = session_auto#make(a:_environment)
-    let target_info = session_auto#make(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
-    silent! exe 'set viewdir=' . target_info['session_dir']
+    if "" == a:_session_dir
+        let target_info = session_auto#make(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
+        let l:session_dir = target_info['session_dir']
+    else
+        let l:session_dir = a:_session_dir
+    endif
+    silent! exe 'set viewdir=' . l:session_dir
     " https://gist.github.com/mitry/813151
     " set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
     " set viewoptions-=options
     set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
     " let s:view_file = local_dir . '/' . s:view_name
     silent! mkview!    " silent! exe 'mkview! ' . s:view_name
-    " call s:storage(target_info, a:_environment)
     " silent! execute "!clear &" | redraw!
     " redraw!
 endfunction
 
-function! s:view_load(_file_dir, _environment)
+function! s:view_load(_environment)
     " let local_dir = resolve(expand(getcwd()))    " session_auto#make(a:_environment)
-    let target_info = session_auto#read(a:_file_dir, a:_environment)
+    let target_info = session_auto#read(a:_environment)
     silent! exe 'set viewdir=' . target_info['session_dir']
     " set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
     " set viewoptions-=options
@@ -272,8 +306,8 @@ endfunction
 " creates a session
 function! s:make(_environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
-    let l:file_dir = resolve(expand("#". bufnr(). ":p:h"))
-    let target_info = session_auto#make(l:file_dir, a:_environment)
+    let l:target_dir = resolve(expand("#". bufnr(). ":p:h"))
+    let target_info = session_auto#make(l:target_dir, a:_environment)
     let l:session_file = target_info['session_file']
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
     " set sessionoptions-=options
@@ -286,17 +320,17 @@ function! s:make(_environment)
     " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
 
     silent! exe "mksession! " . l:session_file
+
     " breakadd here
-    " debug call s:local_link(l:file_dir, a:_environment)
-    let l:local_link = s:local_link(l:file_dir, a:_environment)
-    " let target_info['session_file'] = l:session_file
-    " call s:storage(target_info, a:_environment)
+    " debug call s:local_link(l:target_dir, a:_environment)
+    let l:local_link = s:local_link(target_info['session_dir'], a:_environment)
     " call boot#chomp(system("!clear & | redraw!"))
-    call s:view_make(a:_environment)
+    call s:view_make(target_info['session_dir'], a:_environment)
     " redraw!
     execute "redrawstatus!"
     echohl WarningMsg
     echom "Session saved in " . l:session_file
+    echom "Session link saved in " . l:local_link
     echohl None
     call boot#log_silent(l:func_name . '::"' . s:session_name . '" was saved at', l:session_file, a:_environment)
     call boot#log_silent(l:func_name . '::"l:local_link" was saved at', l:local_link, a:_environment)
@@ -307,8 +341,8 @@ endfunction
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
 function! s:save(_environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
-    let l:file_dir = resolve(expand("#". bufnr(). ":p:h"))
-    let target_info = session_auto#make(l:file_dir, a:_environment)
+    let l:target_dir = resolve(expand("#". bufnr(). ":p:h"))
+    let target_info = session_auto#make(l:target_dir, a:_environment)
     let l:session_file = target_info['session_file']
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
     " set sessionoptions-=options
@@ -321,15 +355,16 @@ function! s:save(_environment)
     " set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
 
     silent! exe "mksession! " . l:session_file
+
     " breakadd here
-    let l:local_link = s:local_link(l:file_dir, a:_environment)
-    " call s:storage(target_info, a:_environment)
+    let l:local_link = s:local_link(target_info['session_dir'], a:_environment)
     " call boot#chomp(system("!clear & | redraw!"))
-    call s:view_make(a:_environment)
+    call s:view_make(target_info['session_dir'], a:_environment)
     " redraw!
     execute "redrawstatus!"
     echohl WarningMsg
     echom "Session saved in " . l:session_file
+    echom "Session link saved in " . l:local_link
     echohl None
     call boot#log_silent(l:func_name . '::"' . s:session_name . '" was saved at', l:session_file, a:_environment)
     call boot#log_silent(l:func_name . '::"l:local_link" was saved at', l:local_link, a:_environment)
@@ -340,17 +375,18 @@ endfunction
 " updates a session, BUT ONLY IF IT ALREADY EXISTS
 function! s:update(_environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
-    let l:file_dir = resolve(expand("#". bufnr(). ":p:h"))
-    let target_info = session_auto#make(l:file_dir, a:_environment)
+    let l:target_dir = resolve(expand("#". bufnr(). ":p:h"))
+    let target_info = session_auto#make(l:target_dir, a:_environment)
     let l:session_file = target_info['session_file']
     if filereadable(l:session_file)
+
         silent! exe "mksession! " . l:session_file
+
         " breakadd here
-        let l:local_link = s:local_link(l:file_dir, a:_environment)
-        " call s:storage(target_info, a:_environment)
+        let l:local_link = s:local_link(target_info['session_dir'], a:_environment)
         echo "updating session"
         " call boot#chomp(system("!clear & | redraw!"))
-        call s:view_make(a:_environment)
+        call s:view_make(target_info['session_dir'], a:_environment)
         " redraw!
         execute "redrawstatus!"
         call boot#log_silent(l:func_name . '::"l:local_link" was saved at', l:local_link, a:_environment)
@@ -359,7 +395,7 @@ function! s:update(_environment)
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
-function! s:restore(_environment)
+function! s:restore(session_file, _environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
     if bufexists(1)
         for l in range(1, bufnr('$'))
@@ -368,17 +404,17 @@ function! s:restore(_environment)
             endif
         endfor
     endif
-    call boot#log_silent(l:func_name, l:session_file, a:_environment)
+    call boot#log_silent(l:func_name, a:session_file, a:_environment)
 endfunction
 
 " loads a session if it exists
-function! s:load(_file_dir, _environment)
+function! s:load(_environment)
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
     " if argc() == 0
     " if(1 == len(v:argv))
-    " let target_info = session_auto#read(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
-    let target_info = session_auto#read(a:_file_dir, a:_environment)
+    let target_info = session_auto#read(a:_environment)
     let l:session_file = target_info['session_file']
+
     " call boot#log_silent(l:func_name, l:session_file, a:_environment)
     if filereadable(l:session_file)
         " silent! echom "session to be loaded."
@@ -386,12 +422,17 @@ function! s:load(_file_dir, _environment)
         " exe 'source ' l:session_file
         "
         if 1 == s:_restore_each_buffer_view
-            call s:restore(a:_environment)
+            call s:restore(l:session_file, a:_environment)
         endif
 
         " silent! echo "session loaded."
-        call s:view_load(a:_file_dir, a:_environment)
+        call s:view_load(a:_environment)
         " redraw!
+
+        echohl WarningMsg
+        echom "Session load from " . l:session_file . " succeeded"
+        echohl None
+
         call boot#log_silent(l:func_name, l:session_file . " succeeded", a:_environment)
 
         if s:callback_update_setuped
@@ -399,6 +440,9 @@ function! s:load(_file_dir, _environment)
         endif
 
     else
+        echohl WarningMsg
+        echom "Session load from " . l:session_file . " failed"
+        echohl None
         " silent! echo "No session loaded."
         call boot#log_silent(l:func_name, l:session_file . " failed", a:_environment)
 
@@ -419,7 +463,7 @@ endfunction
 
 function! LoadSession()
     let l:func_name = boot#function_name(expand('<SID>'), expand('<sfile>'))
-    call s:load(resolve(expand("#". bufnr(). ":p:h")), s:_environment)
+    call s:load(s:_environment)
     call boot#log_silent(l:func_name, "job started", a:_environment)
 endfunction
 
@@ -434,7 +478,7 @@ if(1 == len(v:argv))
 
     augroup load_session
         au!
-        au VimEnter * nested :call s:load(resolve(expand("#". bufnr(). ":p:h")), s:_environment)
+        au VimEnter * nested :call s:load(s:_environment)
         " au VimEnter * nested :call function(g:_environment._job_start)("LoadSession")
     augroup END
 endif
@@ -498,8 +542,8 @@ function! s:make_view_check(_environment)
     endif
 
     let target_info = session_auto#make(resolve(expand("#". bufnr(). ":p:h")), a:_environment)
-    let l:session_dir = target_info['session_dir']
-    let l:session_file = target_info['session_file']  " l:session_dir . '/' . s:session_name
+    let l:session_dir  = target_info['session_dir']
+    let l:session_file = target_info['session_file']
     " let folder_writable = boot#chomp(system(['sh','-c', 'if [ -w "' . l:session_dir . '" ] ; then echo 1 ; else echo 0 ; fi']))
     " if 0 == folder_writable || ! filewritable(l:session_dir) || ! filewritable(l:session_file)
     if ! filewritable(l:session_dir) || ! filewritable(l:session_file)
@@ -516,7 +560,7 @@ endfunction
 "         autocmd BufWinLeave,BufWritePost,BufLeave,WinLeave ?* if s:make_view_check(s:_environment) |
 "             \ call s:view_make(s:_environment) | endif
 "         autocmd BufWinEnter ?* if s:make_view_check(s:_environment) |
-"             \ silent! call s:view_load(resolve(expand("#". bufnr(). ":p:h")), s:_environment) | endif
+"             \ silent! call s:view_load(s:_environment) | endif
 "     augroup end
 " endif
 
