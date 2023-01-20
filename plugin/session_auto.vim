@@ -50,10 +50,10 @@ endif
 " current_cache[/.fiction.vim]  --> project_cache[/.session.vim]
 "       ^          ^                   |^
 "       |          |                   v|
-" current_dir      |            --> project_dir         read stage
+" current_dir      |                project_dir         read stage
 "                  |                   |^
 "                  |                   v|
-"              current_dir          target_dir          write stage
+"              current_dir          target_dir/files    write stage
 
 let s:session_name = '.session.vim'
 let s:fake_session = '.fiction.vim'

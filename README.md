@@ -1,10 +1,14 @@
-```
-:::text
 
-session_auto.vim:   Automatically save the session to the root of the current
-                    project based on the .git location and create a link at
-                    current directory. If the project root could not be
-                    determined, save the session under the current directory.
+# Session Auto
+
+session_auto.vim:   Giving a file, automatically save the session to the
+                    "session cache" root of the current project based on the
+                    .git location the file belongs to and create a link at
+                    "current cache" directory.
+                    If the project root could not be determined, save the
+                    session under the "session cache" directory corresponding
+                    to the file (the graphics in the rationale part are more
+                    convincing).
 Maintainer:         Tuo Jung <https://github.com/trailblazing>
 Version:            0.0.1
 Website:            https://github.com/trailblazing/session_auto
@@ -12,44 +16,38 @@ Dependency:         https://github.com/trailblazing/boot
 License:            GPL v3 and later
 
 
-===============================================================================
-===============================================================================
-
-1. Key feature
-2. Rational
-3. Installation
-3.1 Session key maps
-4. Configurables
-4.1 Variables
-4.2 Settings
-4.3 Logs
-5. Development
-6. References
+## 1. Key feature
+## 2. Rational
+## 3. Installation
+### 3.1 Session key maps
+## 4. Configurables
+### 4.1 Variables
+### 4.2 Settings
+### 4.3 Logs
+## 5. Development
+## 6. References
 
 
-
-1. Key feature
+## 1. Key feature
 
 The goal is to minimize interaction and configuration. Basic functionality out
 of the box.
 
 Determine which project the current file belongs to based on the .git
 directory. The session configurations is then automatically generated in the
-project directory.
+project cache directory.
 
-2. Rationale
-current_cache[/.fiction.vim]  --> project_cache[/.session.vim]
-      ^          ^                   |^
-      |          |                   v|
-current_dir      |            --> project_dir         read stage
-                 |                   |^
-                 |                   v|
-             current_dir          target_dir          write stage
+## 2. Rationale
 
-3. Installation
-===============================================================================
-The plugin is only one file. So you can check out the repository[1][2] and drop
-session_auto.vim into your ~/.vim/pack/*/start/ directory.
+    current_cache[/.fiction.vim]  --> project_cache[/.session.vim]
+          ^          ^                   |^
+          |          |                   v|
+    current_dir      |                project_dir       read stage
+                     |                   |^
+                     |                   v|
+                 current_dir          target_dir/files  write stage
+
+## 3. Installation
 
     cd ~/.vim/pack/*/start/
     git clone --recursive https://github.com/trailblazing/session_auto.git
@@ -64,8 +62,8 @@ session_auto.vim into your ~/.vim/pack/*/start/ directory.
     endfunction
 
 
-3.1 Session key maps
-=======================================
+### 3.1 Session key maps
+
 The plugin already provides command for make a session. But it's not necessary.
 
     execute 'nnoremap <unique><silent> <Plug>(SessionAuto)
@@ -74,13 +72,12 @@ The plugin already provides command for make a session. But it's not necessary.
 
     You could define a map like this in your .vimrc or init.vim:
 
-    map <leader>m <Plug>SessionAuto
+    map <leader><your preferred key> <Plug>SessionAuto
 
-4. Configurables
-===============================================================================
+## 4. Configurables
 
-4.1 Variables
-=======================================
+### 4.1 Variables
+
 These are current global variables and implements might needed by session_auto.
 
     if(has("win32") || has("win95") || has("win64") || has("win16"))
@@ -96,37 +93,51 @@ Optional list for the view files that don't need to be saved,
                 \, '__Tagbar__'
                 \ ]
 
-4.2 Settings
-=======================================
+### 4.2 Settings
+
 In your [.vimrc or init.vim](https://github.com/kissllm/dotconfig/blob/master/init/editor/nvim/init.vim):
 
-set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
-set sessionoptions-=options
-set sessionoptions-=tabpages
-set sessionoptions-=help
-set sessionoptions+=buffers
+    set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
+    set sessionoptions-=options
+    set sessionoptions-=tabpages
+    set sessionoptions-=help
+    set sessionoptions+=buffers
 
-set viewoptions=folds,cursor,unix,slash
+    set viewoptions=folds,cursor,unix,slash
 
-if has('nvim')
-    silent! execute "set viminfo='5,f1,\"50,:20,%,n'" . stdpath('data') . "/viminfo"
-    let &viminfofile = expand('$XDG_DATA_HOME/nvim/shada/main.shada')
-else
-    silent! execute "set viminfo='5,f1,\"50,:20,%,n'" . g:plugin_dir['vim'] . "/viminfo"
-endif
+    if has('nvim')
+        silent! execute "set viminfo='5,f1,\"50,:20,%,n'" . stdpath('data') . "/viminfo"
+        let &viminfofile = expand('$XDG_DATA_HOME/nvim/shada/main.shada')
+    else
+        silent! execute "set viminfo='5,f1,\"50,:20,%,n'" . g:plugin_dir['vim'] . "/viminfo"
+    endif
 
-4.3 Logs
-=======================================
+    function! s:session_state(updating)
+        if a:updating
+            let g:statusline_session_flag = "S"
+        else
+            let g:statusline_session_flag = ""
+        endif
+        execute "redrawstatus!"
+    endfunction
+
+    augroup session_auto
+        au!
+        autocmd VimEnter * :call session_auto#setup(function("s:session_state"))
+    augroup END
+
+### 4.3 Logs
+
 Users may check logs to get feedback from session_auto.
 
     tail -30f $HOME/.vim.log
 
-5. Development
-===============================================================================
+## 5. Development
+
 Pull requests are very welcome.
 
-6. References
-===============================================================================
+## 6. References
+
 [1] https://vim.fandom.com/wiki/Go_away_and_come_back
 [2] https://github.com/trailblazing/session_auto
 [3] https://github.com/trailblazing/cscope_auto
@@ -137,4 +148,3 @@ Pull requests are very welcome.
 [8] https://github.com/erig0/cscope_dynamic
 [9] http://cscope.sourceforge.net/cscope_maps.vim
 
-```
