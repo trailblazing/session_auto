@@ -9,23 +9,16 @@ session_auto.vim:   Giving a file, automatically save the session to the
                     session under the "session cache" directory corresponding
                     to the file (the graphics in the rationale part are more
                     convincing).
+                    
 Maintainer:         Tuo Jung <https://github.com/trailblazing>
+
 Version:            0.0.1
+
 Website:            https://github.com/trailblazing/session_auto
+
 Dependency:         https://github.com/trailblazing/boot
+
 License:            GPL v3 and later
-
-
-## 1. Key feature
-## 2. Rational
-## 3. Installation
-### 3.1 Session key maps
-## 4. Configurables
-### 4.1 Variables
-### 4.2 Settings
-### 4.3 Logs
-## 5. Development
-## 6. References
 
 
 ## 1. Key feature
@@ -35,7 +28,10 @@ of the box.
 
 Determine which project the current file belongs to based on the .git
 directory. The session configurations is then automatically generated in the
-project cache directory.
+"session cache" directory corresponding to the project root. And its anchor
+is stored in the cache location corresponding to the current directory.
+In this way, next time you start vim/nvim without parameters in the current
+directory, you can automatically retrieve the last session.
 
 ## 2. Rationale
 
@@ -139,12 +135,21 @@ Pull requests are very welcome.
 ## 6. References
 
 [1] https://vim.fandom.com/wiki/Go_away_and_come_back
+
 [2] https://github.com/trailblazing/session_auto
+
 [3] https://github.com/trailblazing/cscope_auto
+
 [4] https://github.com/trailblazing/boot
+
 [5] https://bitbucket.org/ericgarver/cscope_dynamic
+
 [6] http://www.vim.org/scripts/script.php?script_id=5098
+
 [7] http://vim.wikia.com/wiki/Timer_to_execute_commands_periodically
+
 [8] https://github.com/erig0/cscope_dynamic
+
 [9] http://cscope.sourceforge.net/cscope_maps.vim
+
 
