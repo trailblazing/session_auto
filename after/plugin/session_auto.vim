@@ -14,7 +14,7 @@ endif
 
 let s:_init_value = {}
 let s:_init_value._log_address      = $HOME . '/.vim.log'
-let s:_init_value._fixed_tips_width = 27
+let s:_init_value._fixed_tips_width = 37
 let s:_init_value._log_verbose      = 0
 let s:_init_value._is_windows       = 0
 let s:_init_value._script_develop   = 0
@@ -30,7 +30,8 @@ endif
 let s:environment = {}
 
 if ! exists("s:_environment")
-    let s:_environment = boot#environment(s:environment, '<sfile>',
+    let s:_environment = boot#environment(s:environment,
+        \ boot#chomp(system('basename ' . resolve(expand('<script>')))),
         \ s:_session_auto_develop, s:_init_value)
 endif
 
@@ -385,9 +386,6 @@ function! s:make(_environment)
         \ . '" was saved at', l:session_file, a:_environment)
     call boot#log_silent(l:func_name . '::"l:local_link" was saved at'
         \, l:local_link, a:_environment)
-    " silent! execute '!(printf ' . '"\n\%-"' . a:_environment._fixed_tips_width
-    "     \ . '"s: \%s\n"' . ' "\"' . s:session_name . '\" was saved at " "'
-    "     \ . l:session_file . '")' . ' >> ' . a:_environment._log_address . ' 2>&1 &'
 endfunction
 
 " https://stackoverflow.com/questions/5142099/how-to-auto-save-vim-session-on-quit-and-auto-reload-on-start-including-split-wi
@@ -423,9 +421,6 @@ function! s:save(_environment)
         \, l:session_file, a:_environment)
     call boot#log_silent(l:func_name . '::"l:local_link" was saved at'
         \, l:local_link, a:_environment)
-    " silent! execute '!(printf ' . '"\n\%-"' . a:_environment._fixed_tips_width
-    "     \ . '"s: \%s\n"' . ' "\"' . s:session_name . '\" was saved at " "'
-    "     \ . l:session_file . '")' . ' >> ' . a:_environment._log_address . ' 2>&1 &'
 endfunction
 
 " updates a session, BUT ONLY IF IT ALREADY EXISTS
