@@ -57,16 +57,23 @@ directory, you can automatically retrieve the last session.
         ...
     endfunction
 
+    For package management lazy.nvim
+    {
+        "trailblazing/session_auto",
+        event = { "VimEnter", "VimLeavePre" },
+        lazy = false,
+    },
 
 ### 3.1 Session key maps
 
 The plugin already provides command for make a session. But it's not necessary.
+Because the design itself does not require any human intervention,
+hotkeys are mainly used for debugging
 
-    execute 'nnoremap <unique><silent> <Plug>(SessionAuto)
-        \ :call <SID>make(g:_environment)<CR><CR>'
     command! -bar -nargs=0 SA :call s:make(s:_environment)
+    command! -bar -nargs=0 SL :call s:load(s:_environment)
 
-    You could define a map like this in your .vimrc or init.vim:
+    You could define a map like this in your .vimrc or init.vim/init.lua:
 
     map <leader><your preferred key> <Plug>SessionAuto
 
@@ -74,6 +81,7 @@ The plugin already provides command for make a session. But it's not necessary.
 
 ### 4.1 Variables
 
+This content is just a guide and is unnecessary in most cases
 These are current global variables and implements might needed by session_auto.
 
     if(has("win32") || has("win95") || has("win64") || has("win16"))
@@ -91,7 +99,9 @@ Optional list for the view files that don't need to be saved,
 
 ### 4.2 Settings
 
-In your [.vimrc or init.vim](https://github.com/kissllm/dotconfig/blob/master/init/editor/nvim/init.vim):
+In your [.vimrc, init.vim, or configs.lua](https://github.com/kissllm/dotconfig/blob/master/init/editor/nvim/init.vim):
+
+This content is just a guide and is unnecessary in most cases
 
     set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
     set sessionoptions-=options
@@ -108,6 +118,8 @@ In your [.vimrc or init.vim](https://github.com/kissllm/dotconfig/blob/master/in
         silent! execute "set viminfo='5,f1,\"50,:20,%,n'" . g:plugin_dir['vim'] . "/viminfo"
     endif
 
+    For status line in vimscript
+
     function! s:session_state(updating)
         if a:updating
             let g:statusline_session_flag = "S"
@@ -121,6 +133,31 @@ In your [.vimrc or init.vim](https://github.com/kissllm/dotconfig/blob/master/in
         au!
         autocmd VimEnter * :call session_auto#setup(function("s:session_state"))
     augroup END
+
+    For lua
+
+    vim.cmd([[
+    function! SessionState(updating)
+        if a:updating
+            let g:statusline_session_flag = "S"
+        else
+            let g:statusline_session_flag = ""
+        endif
+        execute "redrawstatus!"
+    endfunction
+    ]])
+
+    local session_auto_setup = augroup("on_bufenter", { clear = true })
+    autocmd("VimEnter", {
+        callback = function()
+            vim.cmd([[
+            :call session_auto#setup(function("SessionState"))
+            ]])
+        end,
+        desc = "Session status global variable updating",
+        group = session_auto_setup,
+        pattern = "*",
+    })
 
 ### 4.3 Logs
 
