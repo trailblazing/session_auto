@@ -43,11 +43,13 @@ else
 	let s:_session_auto_save_view = g:session_auto_save_view
 endif
 
-" set sessionoptions+=buffers
 if ! exists("g:restore_each_buffer_view")
 	let s:_restore_each_buffer_view  = 0
 else
 	let s:_restore_each_buffer_view = g:restore_each_buffer_view
+	if 1 == s:_restore_each_buffer_view
+		set sessionoptions+=buffers
+	endif
 endif
 
 " Rational
@@ -73,6 +75,7 @@ endfunction
 function! s:to_session_cache(source_dir)
 	let result = {}
 	let l:session_user_home = $HOME
+
 	if "" == l:session_user_home
 		if has('nvim')
 			let l:session_user	= boot#chomp(system(['whoami']))
@@ -81,8 +84,8 @@ function! s:to_session_cache(source_dir)
 		endif
 		if has('nvim')
 			let s:session_user_home =
-				\ system(['/usr/bin/awk',  '-v', 'FS=:', '-v', 'user=' .
-				\ s:session_user, '{if ($1 == user) print $6}', '/etc/passwd'])
+				\ boot#chomp(system(['/usr/bin/awk', '-v', 'FS=:', '-v', 'user=' .
+				\ s:session_user, '{if ($1 == user) print $6}', '/etc/passwd']))
 		else
 			let s:session_user_home =
 				\ boot#chomp(system('/usr/bin/awk -v FS=: -v user=' .
@@ -93,19 +96,26 @@ function! s:to_session_cache(source_dir)
 		call feedkeys("\<CR>")
 		echohl None
 	endif
+
 	if has('nvim')
 		let l:cache_prefix = l:session_user_home . '/.cache/nvim'
 	else
 		let l:cache_prefix = l:session_user_home . '/.cache/vim'
 	endif
+
 	let result['session_prefix'] = l:cache_prefix
 	let l:source_dir = boot#standardize(a:source_dir)
+
 	if '/' == l:source_dir
 		let l:session_dir = l:cache_prefix
+	elseif l:source_dir =~# l:cache_prefix
+		let l:session_dir = l:source_dir
 	else
 		let l:session_dir = l:cache_prefix . l:source_dir
 	endif
+
 	let result['session_dir'] = l:session_dir
+
 	return result
 endfunction
 
@@ -333,8 +343,8 @@ function! s:view_make(_session_dir, _environment)
 	silent! exe 'set viewdir=' . l:session_dir
 	" https://gist.github.com/mitry/813151
 	" set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
-	" set viewoptions-=options
 	set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
+	set viewoptions-=options
 	" let s:view_file = local_dir . '/' . s:view_name
 
 	" silent! exe 'mkview! ' . s:view_name
@@ -349,8 +359,8 @@ function! s:view_load(_environment)
 	let target_info = session_auto#read(a:_environment)
 	silent! exe 'set viewdir=' . target_info['session_dir']
 	" set viewoptions=folds,options,cursor,unix,slash " better unix/windows compatibility
-	" set viewoptions-=options
 	set viewoptions=folds,cursor,unix,slash " better unix/windows compatibility
+	set viewoptions-=options
 	" let s:view_file = local_dir . '/' . s:view_name
 	silent! loadview   " silent! exe 'loadview ' . s:view_name
 	redraw!
@@ -364,11 +374,10 @@ function! s:make(_environment)
 	let target_info = session_auto#make(l:target_dir, a:_environment)
 	let l:session_file = target_info['session_file']
 	set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
-	" set sessionoptions-=options
-	set sessionoptions-=tabpages
+	set sessionoptions-=options
+	set sessionoptions-=blank
 	set sessionoptions-=help
-
-	set sessionoptions-=buffers
+	" set sessionoptions-=buffers
 	" Buffer changes won't save until you have following settings in your .vimrc/init.vim
 	" " https://stackoverflow.com/questions/2902048/vim-save-a-list-of-open-files-and-later-open-all-files/2902082
 	" set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
@@ -400,11 +409,10 @@ function! s:save(_environment)
 	let target_info = session_auto#make(l:target_dir, a:_environment)
 	let l:session_file = target_info['session_file']
 	set sessionoptions=blank,buffers,curdir,help,tabpages,winsize,terminal
-	" set sessionoptions-=options
-	set sessionoptions-=tabpages
+	set sessionoptions-=options
+	set sessionoptions-=blank
 	set sessionoptions-=help
-
-	set sessionoptions-=buffers
+	" set sessionoptions-=buffers
 	" Buffer changes won't save until you have following settings in your .vimrc/init.vim
 	" https://stackoverflow.com/questions/2902048/vim-save-a-list-of-open-files-and-later-open-all-files/2902082
 	" set viminfo='5,f1,\"50,:20,%,n~/.vim/viminfo
@@ -435,6 +443,10 @@ function! s:update(_environment)
 	let target_info = session_auto#make(l:target_dir, a:_environment)
 	let l:session_file = target_info['session_file']
 	if filereadable(l:session_file)
+		set sessionoptions-=options
+		set sessionoptions-=blank
+		set sessionoptions-=help
+		" set sessionoptions-=buffers
 
 		silent! exe "mksession! " . l:session_file
 
