@@ -93,7 +93,9 @@ function! s:to_session_cache(source_dir)
 		endif
 		echohl WarningMsg
 		echom "Session \$HOME == " . l:session_user_home
-		call feedkeys("\<CR>")
+		if ! has('nvim')
+			call feedkeys("\<CR>")
+		endif
 		echohl None
 	endif
 
@@ -396,7 +398,9 @@ function! s:make(_environment)
 	echohl WarningMsg
 	echom "Session file saved in " . l:session_file
 	echom "Session link saved in " . l:local_link
-	call feedkeys("\<CR>")
+	if ! has('nvim')
+		call feedkeys("\<CR>")
+	endif
 	echohl None
 	call boot#log_silent(l:func_name . '::"' . s:session_name
 		\ . '" was saved at', l:session_file, a:_environment)
@@ -432,7 +436,9 @@ function! s:save(_environment)
 	echohl WarningMsg
 	echom "Session file saved in " . l:session_file
 	echom "Session link saved in " . l:local_link
-	call feedkeys("\<CR>")
+	if ! has('nvim')
+		call feedkeys("\<CR>")
+	endif
 	echohl None
 	call boot#log_silent(l:func_name . '::"' . s:session_name . '" was saved at'
 		\, l:session_file, a:_environment)
@@ -491,7 +497,9 @@ function! s:load(_environment)
 	let l:session_file = target_info['session_file']
 	echohl WarningMsg
 	echom "Located session at " . l:session_file
-	call feedkeys("\<CR>")
+	if ! has('nvim')
+		call feedkeys("\<CR>")
+	endif
 	echohl None
 
 	" call boot#log_silent(l:func_name, l:session_file, a:_environment)
@@ -510,7 +518,9 @@ function! s:load(_environment)
 
 		echohl WarningMsg
 		echom "Load session from  " . l:session_file . " succeeded"
+	if ! has('nvim')
 		call feedkeys("\<CR>")
+	endif
 		echohl None
 
 		call boot#log_silent(l:func_name, l:session_file . " succeeded"
@@ -523,7 +533,9 @@ function! s:load(_environment)
 	else
 		echohl WarningMsg
 		echom "Loading session from " . l:session_file . " failed"
-		call feedkeys("\<CR>")
+		if ! has('nvim')
+			call feedkeys("\<CR>")
+		endif
 		echohl None
 		" silent! echo "No session loaded."
 		call boot#log_silent(l:func_name, l:session_file . " failed"
@@ -588,7 +600,6 @@ function! s:reload()
 endfunction
 
 command! -nargs=0 SR :call s:reload()
-
 
 if ! exists('g:skipview_files')
 	" https://vim.fandom.com/wiki/Make_views_automatic
