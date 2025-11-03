@@ -92,7 +92,7 @@ function! s:to_session_cache(source_dir)
 				\ s:session_user. ' "{if (\$1 == user) print \$6}" /etc/passwd'))
 		endif
 		echohl WarningMsg
-		echom "Session \$HOME == " . l:session_user_home
+		echom l:session_user_home . " == \$HOME as the session home"
 		if ! has('nvim')
 			call feedkeys("\<CR>")
 		endif
@@ -129,11 +129,11 @@ function! session_auto#read(_environment = g:_environment)
 	let l:cache_link_dir = l:current_cache['session_dir']
 
 	if has('nvim')
-		let l:read_link = boot#chomp(system(['readlink', l:cache_link_dir
+		let l:read_link = boot#chomp(system(['readlink', '-f', l:cache_link_dir
 			\ . '/' . s:fake_session]))
 		let l:target_dir = boot#chomp(system(['dirname', l:read_link]))
 	else
-		let l:read_link = boot#chomp(system('readlink ' . l:cache_link_dir
+		let l:read_link = boot#chomp(system('readlink -f ' . l:cache_link_dir
 			\ . '/' . s:fake_session))
 		let l:target_dir = boot#chomp(system('dirname ' . l:read_link))
 	endif
@@ -172,10 +172,10 @@ function! s:local_link(_session_dir, _environment)
 	" if link_exists
 
 	if has('nvim')
-		let l:read_link = boot#chomp(system(['readlink'
+		let l:read_link = boot#chomp(system(['readlink', '-f'
 			\, l:cache_link_dir . '/' . s:fake_session]))
 	else
-		let l:read_link = boot#chomp(system('readlink '
+		let l:read_link = boot#chomp(system('readlink -f '
 			\. l:cache_link_dir . '/' . s:fake_session))
 	endif
 
@@ -265,12 +265,12 @@ function! session_auto#make(_file_dir, _environment)
 
 	" Link to directory is a legacy design
 	if has('nvim')
-		let l:read_link = boot#chomp(system(['readlink', l:session_dir]))
+		let l:read_link = boot#chomp(system(['readlink', '-f', l:session_dir]))
 		" let link_exists = boot#chomp(system(['sh', '-c', 'if [ -L "'
 		"     \ . l:session_dir . '" ] ;
 		"     \ then echo 1 ; else echo 0 ; fi']))
 	else
-		let l:read_link = boot#chomp(system('readlink ' . l:session_dir))
+		let l:read_link = boot#chomp(system('readlink -f ' . l:session_dir))
 	endif
 	let link_exists = l:read_link != l:session_dir && "" != l:read_link
 	if link_exists
@@ -396,8 +396,8 @@ function! s:make(_environment)
 	" redraw!
 	execute "redrawstatus!"
 	echohl WarningMsg
-	echom "Session file saved in " . l:session_file
-	echom "Session link saved in " . l:local_link
+	echom l:session_file . " was saved as the session file "
+	echom l:local_link   . " was saved as the session link "
 	if ! has('nvim')
 		call feedkeys("\<CR>")
 	endif
@@ -434,8 +434,8 @@ function! s:save(_environment)
 	" redraw!
 	execute "redrawstatus!"
 	echohl WarningMsg
-	echom "Session file saved in " . l:session_file
-	echom "Session link saved in " . l:local_link
+	echom l:session_file . " was saved as the session file "
+	echom l:local_link   . " was saved as the session link "
 	if ! has('nvim')
 		call feedkeys("\<CR>")
 	endif
@@ -496,7 +496,7 @@ function! s:load(_environment)
 	let target_info = session_auto#read(a:_environment)
 	let l:session_file = target_info['session_file']
 	echohl WarningMsg
-	echom "Located session at " . l:session_file
+	echom l:session_file . " is the session location "
 	if ! has('nvim')
 		call feedkeys("\<CR>")
 	endif
@@ -517,13 +517,13 @@ function! s:load(_environment)
 		" redraw!
 
 		echohl WarningMsg
-		echom "Load session from  " . l:session_file . " succeeded"
+		echom l:session_file . " loading succeeded"
 	if ! has('nvim')
 		call feedkeys("\<CR>")
 	endif
 		echohl None
 
-		call boot#log_silent(l:func_name, l:session_file . " succeeded"
+		call boot#log_silent(l:func_name, l:session_file . " loading succeeded"
 			\, a:_environment)
 
 		if s:callback_update_setuped
@@ -532,13 +532,13 @@ function! s:load(_environment)
 
 	else
 		echohl WarningMsg
-		echom "Loading session from " . l:session_file . " failed"
+		echom l:session_file . " loading failed"
 		if ! has('nvim')
 			call feedkeys("\<CR>")
 		endif
 		echohl None
 		" silent! echo "No session loaded."
-		call boot#log_silent(l:func_name, l:session_file . " failed"
+		call boot#log_silent(l:func_name, l:session_file . " loading failed"
 			\, a:_environment)
 
 		if s:callback_update_setuped
